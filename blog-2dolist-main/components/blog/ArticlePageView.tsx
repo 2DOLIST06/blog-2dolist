@@ -29,6 +29,7 @@ const labelsByLocale = {
     reading: 'min read',
     related: 'Related articles',
     fallbackCategory: 'Category',
+    fallbackAuthor: 'Editorial team',
     translationFallback: '/fr/articles'
   },
   fr: {
@@ -38,6 +39,7 @@ const labelsByLocale = {
     reading: 'min de lecture',
     related: 'Articles liés',
     fallbackCategory: 'Catégorie',
+    fallbackAuthor: 'Équipe éditoriale',
     translationFallback: '/articles'
   }
 } satisfies Record<Locale, Record<string, string>>;
@@ -47,6 +49,7 @@ export function ArticlePageView({ post, author, category, relatedPosts }: Articl
   const articleHeadings = extractHeadingsFromHtml(post.contentHtml);
   const articlePath = getPostHref(post, post.locale);
   const articleUrl = post.canonicalUrl ?? absoluteUrl(articlePath);
+  const authorName = author?.name ?? labels.fallbackAuthor;
   const translationLocale: Locale = post.locale === 'fr' ? 'en' : 'fr';
   const translation = post.translations?.find((item) => item.locale === translationLocale);
   const translationHref = translation?.path ?? translation?.canonicalUrl ?? (translation?.slug ? getArticlePath(translation.locale, translation.slug) : labels.translationFallback);
@@ -58,7 +61,7 @@ export function ArticlePageView({ post, author, category, relatedPosts }: Articl
     image: post.coverImage,
     datePublished: post.publishedAt,
     dateModified: post.updatedAt,
-    authorName: author?.name,
+    authorName,
     category: category?.title ?? labels.fallbackCategory,
     locale: post.locale,
     url: articleUrl
@@ -85,7 +88,7 @@ export function ArticlePageView({ post, author, category, relatedPosts }: Articl
         <p className="mt-4 max-w-3xl text-lg text-slate-600">{post.description}</p>
 
         <div className="mt-5 text-sm text-slate-500">
-          <span>{author?.name}</span> · <span>{formatDate(post.publishedAt, post.locale)}</span> · <span>{post.readingMinutes} {labels.reading}</span>
+          <span>{authorName}</span> · <span>{formatDate(post.publishedAt, post.locale)}</span> · <span>{post.readingMinutes} {labels.reading}</span>
         </div>
 
         <div className="relative mt-8 h-72 overflow-hidden rounded-2xl md:h-[420px]">
