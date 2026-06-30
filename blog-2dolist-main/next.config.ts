@@ -17,8 +17,7 @@ const configuredImageHosts = [
 const nextConfig: NextConfig = {
   async redirects() {
     return [
-      { source: '/blog', destination: '/articles', permanent: true },
-      { source: '/blog/:slug', destination: '/articles/:slug', permanent: true }
+      { source: '/blog', destination: '/articles', permanent: true }
     ];
   },
   images: {

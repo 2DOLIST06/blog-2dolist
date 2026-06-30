@@ -71,6 +71,7 @@ export interface Post {
 
 export interface RelatedPostSummary {
   slug: string;
+  path?: string;
   title: string;
   excerpt: string;
   coverImage: string;

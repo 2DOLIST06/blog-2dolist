@@ -283,6 +283,32 @@ async function fetchCollection<T>(path: string): Promise<T[]> {
   }
 }
 
+async function fetchPostByPath(path: string, locale: Locale = 'en'): Promise<ApiPost | null> {
+  try {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const params = new URLSearchParams({ path: normalizedPath, locale });
+    const response = await fetch(buildPublicApiUrl(`/api/posts/by-path?${params.toString()}`), {
+      next: { revalidate: 60 }
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json().catch(() => ({}))) as {
+      data?: unknown;
+      post?: unknown;
+    };
+
+    if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+      const data = payload.data as { post?: unknown };
+      if (data.post && typeof data.post === 'object' && !Array.isArray(data.post)) return data.post as ApiPost;
+      return payload.data as ApiPost;
+    }
+
+    if (payload.post && typeof payload.post === 'object' && !Array.isArray(payload.post)) return payload.post as ApiPost;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchPostBySlug(slug: string, locale: Locale = 'en'): Promise<ApiPost | null> {
   try {
     const response = await fetch(buildPublicApiUrl(`/api/posts/${slug}?locale=${locale}`), {
@@ -340,6 +366,11 @@ export const contentRepository = {
   },
   async getRecentPosts(limit = 4): Promise<Post[]> {
     return this.getRecentPostsByLocale('en', limit);
+  },
+  async getPostByPath(path: string, locale: Locale = 'en'): Promise<Post | undefined> {
+    const post = await fetchPostByPath(path, locale);
+    if (!post || (post.status && post.status.toUpperCase() !== 'PUBLISHED') || post.isActive === false) return undefined;
+    return toPost(post);
   },
   async getPostBySlugAndLocale(slug: string, locale: Locale): Promise<Post | undefined> {
     const post = await fetchPostBySlug(slug, locale);
@@ -428,6 +459,7 @@ export const contentRepository = {
       .slice(0, limit)
       .map((post) => ({
         slug: post.slug,
+        path: post.path,
         title: post.title,
         excerpt: post.excerpt,
         coverImage: post.coverImage,
