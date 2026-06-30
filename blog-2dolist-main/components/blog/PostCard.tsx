@@ -20,8 +20,8 @@ export function PostCard({ post, category, author, href }: PostCardProps) {
     post.excerpt?.trim() ||
     post.description?.trim() ||
     (post.locale === 'fr'
-      ? 'Un guide pour comprendre les bases du sujet et mieux organiser vos entraînements.'
-      : 'A guide to understand the basics of the topic and organize your training more effectively.');
+      ? 'Un guide pour comprendre les bases du sujet et mieux organiser les informations essentielles.'
+      : 'A guide to understand the basics of the topic and organize the key information more effectively.');
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

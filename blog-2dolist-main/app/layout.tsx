@@ -15,7 +15,7 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const locale = ((await headers()).get('x-body-training-guide-locale') === 'fr' ? 'fr' : 'en') satisfies Locale;
+  const locale = ((await headers()).get('x-blog-locale') === 'fr' ? 'fr' : 'en') satisfies Locale;
 
   return (
     <html lang={locale}>
