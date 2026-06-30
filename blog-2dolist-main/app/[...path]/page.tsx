@@ -4,20 +4,19 @@ import { ArticlePageView } from '@/components/blog/ArticlePageView';
 import { contentRepository } from '@/lib/content/repository';
 import { buildMissingPostMetadata, buildPostMetadata } from '@/lib/seo/post-metadata';
 
-export async function generateStaticParams() {
-  const posts = await contentRepository.getAllPostsByLocale('en');
-  return posts.map((post) => ({ slug: post.slug }));
+const toPath = (segments: string[]) => `/${segments.join('/')}/`;
+
+export async function generateMetadata({ params }: { params: Promise<{ path: string[] }> }): Promise<Metadata> {
+  const { path } = await params;
+  const requestedPath = toPath(path);
+  const post = await contentRepository.getPostByPath(requestedPath, 'en');
+  return post ? buildPostMetadata(post) : buildMissingPostMetadata(requestedPath, 'en');
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params;
-  const post = await contentRepository.getPostBySlugAndLocale(slug, 'en');
-  return post ? buildPostMetadata(post) : buildMissingPostMetadata(slug, 'en');
-}
-
-export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const post = await contentRepository.getPostBySlugAndLocale(slug, 'en');
+export default async function WordPressPathArticlePage({ params }: { params: Promise<{ path: string[] }> }) {
+  const { path } = await params;
+  const requestedPath = toPath(path);
+  const post = await contentRepository.getPostByPath(requestedPath, 'en');
 
   if (!post) return notFound();
 

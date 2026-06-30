@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDate } from '@/lib/content/presenters';
-import { getArticlePath } from '@/lib/i18n/routing';
+import { getPostHref } from '@/lib/content/urls';
 import { Badge } from '@/components/ui/Badge';
 import type { Author, Category, Post } from '@/types/content';
 
@@ -13,7 +13,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, category, author, href }: PostCardProps) {
-  const articleHref = href ?? getArticlePath(post.locale, post.slug);
+  const articleHref = href ?? getPostHref(post);
   const byline = post.locale === 'fr' ? 'Équipe éditoriale' : 'Editorial team';
   const readingLabel = post.locale === 'fr' ? 'min de lecture' : 'min read';
   const excerpt =
