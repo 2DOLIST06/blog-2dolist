@@ -33,8 +33,8 @@ export interface PostFaq {
 
 export interface PostTranslation {
   locale: Locale;
-  slug: string;
-  path: string;
+  slug?: string;
+  path?: string;
   canonicalUrl?: string;
 }
 

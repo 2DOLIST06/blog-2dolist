@@ -1,6 +1,6 @@
-# The Muscle Temple — Frontend Foundation
+# Blog Frontend Foundation
 
-Base front professionnelle pour un blog musculation/fitness avec **Next.js App Router**, **TypeScript** et **Tailwind CSS**.
+Base front professionnelle pour un blog avec **Next.js App Router**, **TypeScript** et **Tailwind CSS**.
 Le projet est structuré pour être facilement réutilisable sur d'autres blogs et prêt pour un futur backend séparé.
 
 ## Lancer le projet
@@ -47,10 +47,6 @@ components/
 lib/
   content/     # couche d’accès au contenu (abstraction prête pour API)
   seo/         # helpers SEO réutilisables
-data/
-  posts.ts     # contenu mock local
-  categories.ts
-  authors.ts
 types/
   content.ts   # modèles Post, Category, Author, Navigation, etc.
   seo.ts
@@ -66,8 +62,7 @@ La couche à remplacer est principalement :
 
 - `lib/content/repository.ts`
 
-Aujourd’hui, elle lit les fichiers `data/*.ts`.
-Demain, vous pouvez conserver la même interface (`getAllPosts`, `getPostBySlug`, etc.) et remplacer l’implémentation par des appels API/SDK CMS.
+Aujourd’hui, elle consomme l’API publique pour les articles, catégories et auteurs. Vous pouvez conserver la même interface (`getAllPosts`, `getPostBySlug`, etc.) si l’API ou le CMS évolue.
 
 Cela évite de recoder les pages et composants.
 
@@ -82,13 +77,9 @@ Cela évite de recoder les pages et composants.
 
 ---
 
-## Où ajouter des articles
+## Où gérer les contenus
 
-- `data/posts.ts`
-- `data/categories.ts`
-- `data/authors.ts`
-
-Les pages se mettent à jour automatiquement via la couche `contentRepository`.
+Les articles, catégories et auteurs viennent de l’API via `lib/content/repository.ts`. Les anciennes données locales de démonstration ont été supprimées pour éviter de mélanger le futur import WordPress avec du contenu legacy.
 
 ---
 
@@ -129,7 +120,7 @@ Route de compatibilité :
 Variables recommandées :
 
 ```bash
-NEXT_PUBLIC_API_URL=https://the-muscle-temple-api-1.onrender.com
+NEXT_PUBLIC_API_URL=https://api.example.com
 ```
 
 Token serveur requis pour les routes API admin (pas de login utilisateur côté front) :

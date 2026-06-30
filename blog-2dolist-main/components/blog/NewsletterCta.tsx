@@ -19,7 +19,7 @@ export function NewsletterCta({ source = 'home', locale = 'fr' }: NewsletterCtaP
   const copy = locale === 'fr'
     ? {
         title: 'Newsletter',
-        text: 'Recevez un résumé hebdomadaire des derniers contenus sur l’entraînement, la nutrition et la récupération.',
+        text: 'Recevez un résumé hebdomadaire des derniers contenus publiés sur le blog.',
         label: 'Adresse e-mail',
         placeholder: 'Votre email',
         button: 'S’inscrire',
@@ -32,7 +32,7 @@ export function NewsletterCta({ source = 'home', locale = 'fr' }: NewsletterCtaP
       }
     : {
         title: 'Newsletter',
-        text: 'Get a weekly summary of the latest training, nutrition and recovery content.',
+        text: 'Get a weekly summary of the latest content published on the blog.',
         label: 'Email address',
         placeholder: 'Your email',
         button: 'Subscribe',

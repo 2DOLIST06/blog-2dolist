@@ -99,7 +99,7 @@ const secondaryButtonClass =
   'rounded border border-slate-600 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60';
 
 type PostTranslationExport = {
-  schema: 'the-muscle-temple.post-translation';
+  schema: 'blog.post-translation';
   version: 1;
   exportedAt: string;
   instructions: string;
@@ -149,7 +149,7 @@ const buildTranslationExport = (post: PostModel): PostTranslationExport => {
   const exportedPost = Object.fromEntries(exportablePostFields.map((field) => [field, post[field]])) as Omit<PostModel, 'id' | 'translations'>;
 
   return {
-    schema: 'the-muscle-temple.post-translation',
+    schema: 'blog.post-translation',
     version: 1,
     exportedAt: new Date().toISOString(),
     instructions:

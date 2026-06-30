@@ -10,7 +10,7 @@ import { Container } from '@/components/ui/Container';
 import { extractHeadingsFromHtml } from '@/lib/content/headings';
 import { formatDate } from '@/lib/content/presenters';
 import { getPostHref } from '@/lib/content/urls';
-import { absoluteUrl, getArticlesPath, getHomePath, type Locale } from '@/lib/i18n/routing';
+import { absoluteUrl, getArticlePath, getArticlesPath, getHomePath, type Locale } from '@/lib/i18n/routing';
 import { blogPostingJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld';
 import type { Author, Category, Post, RelatedPostSummary } from '@/types/content';
 
@@ -49,7 +49,7 @@ export function ArticlePageView({ post, author, category, relatedPosts }: Articl
   const articleUrl = post.canonicalUrl ?? absoluteUrl(articlePath);
   const translationLocale: Locale = post.locale === 'fr' ? 'en' : 'fr';
   const translation = post.translations?.find((item) => item.locale === translationLocale);
-  const translationHref = translation?.path ?? translation?.canonicalUrl ?? labels.translationFallback;
+  const translationHref = translation?.path ?? translation?.canonicalUrl ?? (translation?.slug ? getArticlePath(translation.locale, translation.slug) : labels.translationFallback);
 
   const postJsonLd = blogPostingJsonLd({
     title: post.title,
