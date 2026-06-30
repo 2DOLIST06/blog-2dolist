@@ -59,7 +59,7 @@ async function cmsFetch<T>(path: string, revalidate = 120): Promise<T | null> {
 }
 
 const mapCategory = (c: CmsCategory): Category => ({ id: c.id, slug: c.slug, title: c.title?.trim() || c.name?.trim() || 'Catégorie', description: c.description?.trim() || 'Sans description.' });
-const mapAuthor = (a?: CmsAuthor | null): Author => ({ id: a?.id || 'unknown-author', slug: a?.slug || 'auteur-inconnu', name: a?.name?.trim() || 'Équipe éditoriale', role: 'Auteur', bio: a?.bio?.trim() || 'Auteur Body Training Guide.', avatar: toCmsAssetUrl(a?.avatar?.url) || DEFAULT_AVATAR });
+const mapAuthor = (a?: CmsAuthor | null): Author => ({ id: a?.id || 'unknown-author', slug: a?.slug || 'auteur-inconnu', name: a?.name?.trim() || 'Équipe éditoriale', role: 'Auteur', bio: a?.bio?.trim() || 'Auteur.', avatar: toCmsAssetUrl(a?.avatar?.url) || DEFAULT_AVATAR });
 const mapPost = (p: CmsPost): Post => {
   const category = typeof p.category === 'object' && p.category ? p.category : null;
   const author = typeof p.author === 'object' && p.author ? p.author : null;

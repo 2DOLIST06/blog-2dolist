@@ -1,5 +1,5 @@
 import { buildPublicApiUrl, getPublicApiBaseUrl } from '@/lib/api/env';
-import { getStrengthTrainingCategoryCopy } from '@/lib/content/category-copy';
+import { siteConfig } from '@/lib/site/config';
 import { getArticlePath, type Hreflang, type Locale } from '@/lib/i18n/routing';
 import type { Author, Category, Post, PostFaq, PostSection, RelatedPostSummary } from '@/types/content';
 
@@ -199,7 +199,7 @@ const toPost = (apiPost: ApiPost): Post => {
   coverImage: toAbsoluteApiAssetUrl(
     apiPost.coverImage?.url?.trim() ||
       apiPost.heroImageUrl?.trim() ||
-      'https://images.unsplash.com/photo-1517836357463-d25dfeac3438'
+      siteConfig.defaultOgImage
   ),
   publishedAt: apiPost.publishedAt || apiPost.updatedAt || new Date().toISOString(),
   updatedAt: apiPost.updatedAt || undefined,
@@ -244,8 +244,8 @@ const toAuthor = (author: ApiAuthor): Author => ({
   slug: author.slug,
   name: author.name,
   role: 'Auteur',
-  bio: author.bio?.trim() || 'Auteur Body Training Guide.',
-  avatar: toAbsoluteApiAssetUrl(author.avatar?.url?.trim() || 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5')
+  bio: author.bio?.trim() || 'Auteur.',
+  avatar: author.avatar?.url?.trim() ? toAbsoluteApiAssetUrl(author.avatar.url.trim()) : siteConfig.defaultOgImage
 });
 
 async function fetchCollection<T>(path: string): Promise<T[]> {
@@ -382,20 +382,7 @@ export const contentRepository = {
   },
   async getAllCategoriesByLocale(locale: Locale): Promise<Category[]> {
     const apiCategories = await fetchCollection<ApiCategory>(`/api/categories?locale=${locale}`);
-    const categories = apiCategories.map(toCategory);
-
-    if (categories.some((category) => category.slug === 'musculation')) return categories;
-
-    const strengthTrainingCopy = getStrengthTrainingCategoryCopy(locale);
-    return [
-      ...categories,
-      {
-        id: `musculation-${locale}`,
-        slug: 'musculation',
-        title: strengthTrainingCopy.title,
-        description: strengthTrainingCopy.shortDescription
-      }
-    ];
+    return apiCategories.map(toCategory);
   },
   async getAllCategories(): Promise<Category[]> {
     return this.getAllCategoriesByLocale('en');

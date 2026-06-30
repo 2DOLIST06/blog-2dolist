@@ -18,7 +18,7 @@ export function NewsletterCta({ source = 'home', locale = 'fr' }: NewsletterCtaP
 
   const copy = locale === 'fr'
     ? {
-        title: 'Newsletter Body Training Guide',
+        title: 'Newsletter',
         text: 'Recevez un résumé hebdomadaire des derniers contenus sur l’entraînement, la nutrition et la récupération.',
         label: 'Adresse e-mail',
         placeholder: 'Votre email',
@@ -31,7 +31,7 @@ export function NewsletterCta({ source = 'home', locale = 'fr' }: NewsletterCtaP
         error: 'Erreur pendant l’inscription newsletter.'
       }
     : {
-        title: 'Body Training Guide Newsletter',
+        title: 'Newsletter',
         text: 'Get a weekly summary of the latest training, nutrition and recovery content.',
         label: 'Email address',
         placeholder: 'Your email',

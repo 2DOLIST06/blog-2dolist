@@ -18,9 +18,7 @@ export function Footer() {
           <div>
             <h3 className="font-semibold text-slate-900">{siteConfig.name}</h3>
             <p className="mt-2 text-sm text-slate-600">
-              {locale === 'fr'
-                ? 'Guides de musculation, nutrition et récupération pour progresser durablement.'
-                : 'Strength training, nutrition and recovery guides for sustainable progress.'}
+              {siteConfig.description}
             </p>
           </div>
           <div>
@@ -35,7 +33,7 @@ export function Footer() {
           </div>
           <div>
             <h3 className="font-semibold text-slate-900">Newsletter</h3>
-            <p className="mt-2 text-sm text-slate-600">{locale === 'fr' ? 'Recevez nos contenus sur l’entraînement, la nutrition et la récupération.' : 'Get practical training, nutrition and recovery content.'}</p>
+            <p className="mt-2 text-sm text-slate-600">{locale === 'fr' ? 'Recevez les nouveaux contenus du blog.' : 'Get the latest blog content.'}</p>
           </div>
         </div>
       </Container>

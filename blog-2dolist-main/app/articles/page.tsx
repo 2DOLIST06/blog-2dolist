@@ -3,19 +3,21 @@ import Link from 'next/link';
 import { PostCard } from '@/components/blog/PostCard';
 import { Container } from '@/components/ui/Container';
 import { contentRepository } from '@/lib/content/repository';
+import { absoluteUrl } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
+import { siteConfig } from '@/lib/site/config';
 import { getPageSeo } from '@/lib/seo/pages';
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata(await getPageSeo('articles', 'en', {
-    title: 'Training and nutrition articles | Body Training Guide',
-    description: 'All English articles about training, nutrition and recovery.',
+    title: `Articles | ${siteConfig.name}`,
+    description: 'All published English articles.',
     path: '/articles',
     locale: 'en',
     hreflang: [
-      { hreflang: 'en', href: 'https://bodytrainingguide.com/articles' },
-      { hreflang: 'fr', href: 'https://bodytrainingguide.com/fr/articles' },
-      { hreflang: 'x-default', href: 'https://bodytrainingguide.com/articles' }
+      { hreflang: 'en', href: absoluteUrl('/articles') },
+      { hreflang: 'fr', href: absoluteUrl('/fr/articles') },
+      { hreflang: 'x-default', href: absoluteUrl('/articles') }
     ]
   }));
 }

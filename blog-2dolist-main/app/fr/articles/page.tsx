@@ -3,19 +3,21 @@ import Link from 'next/link';
 import { PostCard } from '@/components/blog/PostCard';
 import { Container } from '@/components/ui/Container';
 import { contentRepository } from '@/lib/content/repository';
+import { absoluteUrl } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
+import { siteConfig } from '@/lib/site/config';
 import { getPageSeo } from '@/lib/seo/pages';
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata(await getPageSeo('articles', 'fr', {
-    title: 'Articles musculation et nutrition | Body Training Guide',
-    description: 'Tous les articles français sur la musculation, la nutrition et la récupération.',
+    title: `Articles | ${siteConfig.name}`,
+    description: 'Tous les articles français publiés.',
     path: '/fr/articles',
     locale: 'fr',
     hreflang: [
-      { hreflang: 'en', href: 'https://bodytrainingguide.com/articles' },
-      { hreflang: 'fr', href: 'https://bodytrainingguide.com/fr/articles' },
-      { hreflang: 'x-default', href: 'https://bodytrainingguide.com/articles' }
+      { hreflang: 'en', href: absoluteUrl('/articles') },
+      { hreflang: 'fr', href: absoluteUrl('/fr/articles') },
+      { hreflang: 'x-default', href: absoluteUrl('/articles') }
     ]
   }));
 }
