@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/Container';
 import { contentRepository } from '@/lib/content/repository';
 import { getAuthorPath } from '@/lib/i18n/routing';
-import { buildMetadata } from '@/lib/seo/metadata';
+import { absoluteUrl, buildMetadata } from '@/lib/seo/metadata';
 import { siteConfig } from '@/lib/site/config';
 import { getPageSeo } from '@/lib/seo/pages';
 
