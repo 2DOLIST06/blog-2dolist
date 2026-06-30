@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-white text-slate-900 antialiased;
+}
+
+a {
+  @apply text-inherit no-underline;
+}
+
+.rich-content {
+  @apply max-w-none text-base leading-8 text-slate-700;
+}
+
+.rich-content > * + * {
+  @apply mt-5;
+}
+
+.rich-content h1 {
+  @apply mt-10 text-3xl font-bold leading-tight text-slate-950;
+}
+
+.rich-content h2 {
+  @apply mt-10 text-2xl font-bold leading-tight text-slate-900;
+}
+
+.rich-content h3 {
+  @apply mt-8 text-xl font-semibold leading-tight text-slate-900;
+}
+
+.rich-content h4 {
+  @apply mt-6 text-lg font-semibold leading-tight text-slate-900;
+}
+
+.rich-content p {
+  @apply text-slate-700;
+}
+
+.rich-content strong,
+.rich-content b {
+  @apply font-bold text-slate-900;
+}
+
+.rich-content em,
+.rich-content i {
+  @apply italic;
+}
+
+.rich-content u {
+  @apply underline underline-offset-4;
+}
+
+.rich-content s,
+.rich-content strike {
+  @apply line-through;
+}
+
+.rich-content a {
+  @apply font-medium text-brand-700 underline underline-offset-4;
+}
+
+.rich-content ul {
+  @apply list-disc space-y-2 pl-6;
+}
+
+.rich-content ol {
+  @apply list-decimal space-y-2 pl-6;
+}
+
+.rich-content blockquote {
+  @apply border-l-4 border-brand-700 bg-slate-50 py-3 pl-5 pr-4 italic text-slate-700;
+}
+
+.rich-content pre {
+  @apply overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm leading-6 text-slate-100;
+}
+
+.rich-content code {
+  @apply rounded bg-slate-100 px-1.5 py-0.5 text-sm text-slate-900;
+}
+
+.rich-content pre code {
+  @apply bg-transparent p-0 text-slate-100;
+}
+
+.rich-content hr {
+  @apply my-8 border-slate-200;
+}
+
+.rich-content figure {
+  @apply my-8;
+}
+
+.rich-content img {
+  @apply h-auto max-w-full rounded-2xl object-cover shadow-sm;
+}
+
+.rich-content figcaption {
+  @apply mt-2 text-center text-sm text-slate-500;
+}
