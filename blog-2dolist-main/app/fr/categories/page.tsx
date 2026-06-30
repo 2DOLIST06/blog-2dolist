@@ -1,28 +1,30 @@
 import type { Metadata } from 'next';
 import { CategoryCard } from '@/components/blog/CategoryCard';
 import { Container } from '@/components/ui/Container';
-import { withStrengthTrainingShortCopy } from '@/lib/content/category-copy';
+import { withConfiguredShortCategoryCopy } from '@/lib/content/category-copy';
 import { contentRepository } from '@/lib/content/repository';
+import { absoluteUrl } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
+import { siteConfig } from '@/lib/site/config';
 import { getPageSeo } from '@/lib/seo/pages';
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata(await getPageSeo('categories', 'fr', {
-    title: 'Catégories | Body Training Guide',
-    description: 'Explorez les catégories du blog musculation.',
+    title: `Catégories | ${siteConfig.name}`,
+    description: 'Explorez les catégories du blog.',
     path: '/fr/categories',
     locale: 'fr',
     hreflang: [
-      { hreflang: 'en', href: 'https://bodytrainingguide.com/categories' },
-      { hreflang: 'fr', href: 'https://bodytrainingguide.com/fr/categories' },
-      { hreflang: 'x-default', href: 'https://bodytrainingguide.com/categories' }
+      { hreflang: 'en', href: absoluteUrl('/categories') },
+      { hreflang: 'fr', href: absoluteUrl('/fr/categories') },
+      { hreflang: 'x-default', href: absoluteUrl('/categories') }
     ]
   }));
 }
 
 export default async function FrenchCategoriesPage() {
   const categories = (await contentRepository.getAllCategoriesByLocale('fr')).map((category) =>
-    withStrengthTrainingShortCopy(category, 'fr')
+    withConfiguredShortCategoryCopy(category)
   );
 
   return (

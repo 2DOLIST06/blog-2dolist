@@ -1,6 +1,4 @@
-const API_DEFAULT_BASE_URL = 'https://the-muscle-temple-api-1.onrender.com';
-
-const FRONTEND_HOSTS = new Set(['bodytrainingguide.com', 'www.bodytrainingguide.com']);
+const API_DEFAULT_BASE_URL = process.env.API_DEFAULT_BASE_URL?.trim() || '';
 
 const normalizeBaseUrl = (value: string | undefined) => {
   const trimmed = value?.trim().replace(/\/+$/, '');
@@ -15,6 +13,12 @@ const getHostname = (value: string | undefined) => {
     return undefined;
   }
 };
+
+const FRONTEND_HOSTS = new Set(
+  (process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : [])
+    .map((url) => getHostname(url))
+    .filter((hostname): hostname is string => Boolean(hostname))
+);
 
 const isFrontendUrl = (value: string | undefined) => {
   const hostname = getHostname(value);

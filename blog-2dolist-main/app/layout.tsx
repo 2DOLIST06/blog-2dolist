@@ -8,7 +8,7 @@ import { buildMetadata } from '@/lib/seo/metadata';
 import type { Locale } from '@/lib/i18n/routing';
 
 export const metadata: Metadata = buildMetadata({
-  title: `${siteConfig.name} | Strength training guides`,
+  title: siteConfig.defaultMetaTitle,
   description: siteConfig.description,
   path: '/',
   locale: 'en'

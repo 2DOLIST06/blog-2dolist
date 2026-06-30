@@ -4,31 +4,31 @@ import { NewsletterCta } from '@/components/blog/NewsletterCta';
 import { PostCard } from '@/components/blog/PostCard';
 import { SectionHeading } from '@/components/blog/SectionHeading';
 import { Container } from '@/components/ui/Container';
-import { withStrengthTrainingShortCopy } from '@/lib/content/category-copy';
+import { withConfiguredShortCategoryCopy } from '@/lib/content/category-copy';
 import { contentRepository } from '@/lib/content/repository';
+import { absoluteUrl } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
+import { siteConfig } from '@/lib/site/config';
 
-const homeDescription = 'Strength training, exercise, nutrition and recovery guides to help you organize your workouts and make steady progress.';
 const websiteJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: 'Body Training Guide',
-  url: 'https://bodytrainingguide.com',
+  name: siteConfig.name,
+  url: siteConfig.baseUrl,
   inLanguage: 'en',
-  description: 'Strength training, exercise, nutrition and recovery guides to help you organize your workouts.'
+  description: siteConfig.description
 };
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata({
-    title: 'Body Training Guide | Strength Training, Nutrition and Exercises',
-    description: homeDescription,
+    title: siteConfig.defaultMetaTitle,
+    description: siteConfig.description,
     path: '/',
-    canonicalUrl: 'https://bodytrainingguide.com',
     locale: 'en',
     hreflang: [
-      { hreflang: 'en', href: 'https://bodytrainingguide.com' },
-      { hreflang: 'fr', href: 'https://bodytrainingguide.com/fr' },
-      { hreflang: 'x-default', href: 'https://bodytrainingguide.com' }
+      { hreflang: 'en', href: absoluteUrl('/') },
+      { hreflang: 'fr', href: absoluteUrl('/fr') },
+      { hreflang: 'x-default', href: absoluteUrl('/') }
     ]
   });
 }
@@ -43,29 +43,16 @@ export default async function HomePage() {
   ]);
   const displayablePosts = recentPosts.length > 0 ? recentPosts : featuredPosts;
   const primaryPosts = displayablePosts.length >= 3 ? displayablePosts.slice(0, 3) : displayablePosts;
-  const normalizedCategories = categories.map((category) => withStrengthTrainingShortCopy(category, locale));
+  const normalizedCategories = categories.map(withConfiguredShortCategoryCopy);
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
       <section className="border-b border-slate-200 bg-slate-50 py-16">
         <Container>
-          <p className="text-sm font-semibold uppercase tracking-widest text-brand-700">Body Training Guide</p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-            Build a stronger body with a clear method.
-          </h1>
-          <p className="mt-5 max-w-2xl text-base text-slate-600">{homeDescription}</p>
-        </Container>
-      </section>
-
-      <section className="py-14">
-        <Container>
-          <div className="max-w-3xl">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Strength training guides built around a simple method</h2>
-            <p className="mt-4 text-base leading-7 text-slate-600">
-              Body Training Guide brings together practical articles about strength training, exercises, muscle groups, nutrition and recovery. The goal is to help you understand what to train, how to structure your workouts and how to progress without adding unnecessary complexity.
-            </p>
-          </div>
+          <p className="text-sm font-semibold uppercase tracking-widest text-brand-700">{siteConfig.name}</p>
+          <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">{siteConfig.defaultMetaTitle}</h1>
+          <p className="mt-5 max-w-2xl text-base text-slate-600">{siteConfig.description}</p>
         </Container>
       </section>
 

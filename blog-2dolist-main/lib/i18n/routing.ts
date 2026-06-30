@@ -52,9 +52,9 @@ export const getNavigation = (locale: Locale) =>
   locale === 'fr'
     ? [
         { label: 'Accueil', href: getHomePath('fr') },
-        { label: 'Musculation', href: getCategoryPath('fr', 'musculation') }
+        { label: 'Catégories', href: getCategoriesPath('fr') }
       ]
     : [
         { label: 'Home', href: getHomePath('en') },
-        { label: 'Strength training', href: getCategoryPath('en', 'musculation') }
+        { label: 'Categories', href: getCategoriesPath('en') }
       ];

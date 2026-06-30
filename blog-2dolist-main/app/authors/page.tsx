@@ -5,18 +5,19 @@ import { Container } from '@/components/ui/Container';
 import { contentRepository } from '@/lib/content/repository';
 import { getAuthorPath } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
+import { siteConfig } from '@/lib/site/config';
 import { getPageSeo } from '@/lib/seo/pages';
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata(await getPageSeo('authors', 'en', {
-    title: 'Authors | Body Training Guide',
-    description: 'Meet the authors behind Body Training Guide.',
+    title: `Authors | ${siteConfig.name}`,
+    description: 'Meet the blog authors.',
     path: '/authors',
     locale: 'en',
     hreflang: [
-      { hreflang: 'en', href: 'https://bodytrainingguide.com/authors' },
-      { hreflang: 'fr', href: 'https://bodytrainingguide.com/fr/authors' },
-      { hreflang: 'x-default', href: 'https://bodytrainingguide.com/authors' }
+      { hreflang: 'en', href: absoluteUrl('/authors') },
+      { hreflang: 'fr', href: absoluteUrl('/fr/authors') },
+      { hreflang: 'x-default', href: absoluteUrl('/authors') }
     ]
   }));
 }

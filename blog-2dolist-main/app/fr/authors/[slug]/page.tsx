@@ -6,6 +6,7 @@ import { Container } from '@/components/ui/Container';
 import { contentRepository } from '@/lib/content/repository';
 import { absoluteUrl, getAuthorPath } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
+import { siteConfig } from '@/lib/site/config';
 
 export async function generateStaticParams() {
   const authors = await contentRepository.getAllAuthorsByLocale('fr');
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   if (!author) {
     return buildMetadata({
-      title: 'Auteur introuvable | Body Training Guide',
+      title: `Auteur introuvable | ${siteConfig.name}`,
       description: 'Auteur indisponible.',
       path: getAuthorPath('fr', slug),
       locale: 'fr',

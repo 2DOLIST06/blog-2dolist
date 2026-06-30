@@ -28,7 +28,7 @@ const labelsByLocale = {
     readTranslation: 'Lire en français',
     reading: 'min read',
     related: 'Related articles',
-    fallbackCategory: 'Training',
+    fallbackCategory: 'Category',
     translationFallback: '/fr/articles'
   },
   fr: {
@@ -37,7 +37,7 @@ const labelsByLocale = {
     readTranslation: 'Read in English',
     reading: 'min de lecture',
     related: 'Articles liés',
-    fallbackCategory: 'Musculation',
+    fallbackCategory: 'Catégorie',
     translationFallback: '/articles'
   }
 } satisfies Record<Locale, Record<string, string>>;
@@ -58,7 +58,7 @@ export function ArticlePageView({ post, author, category, relatedPosts }: Articl
     image: post.coverImage,
     datePublished: post.publishedAt,
     dateModified: post.updatedAt,
-    authorName: author?.name ?? 'Body Training Guide',
+    authorName: author?.name,
     category: category?.title ?? labels.fallbackCategory,
     locale: post.locale,
     url: articleUrl

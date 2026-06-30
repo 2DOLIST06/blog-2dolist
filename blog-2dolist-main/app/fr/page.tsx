@@ -4,31 +4,31 @@ import { NewsletterCta } from '@/components/blog/NewsletterCta';
 import { PostCard } from '@/components/blog/PostCard';
 import { SectionHeading } from '@/components/blog/SectionHeading';
 import { Container } from '@/components/ui/Container';
-import { withStrengthTrainingShortCopy } from '@/lib/content/category-copy';
+import { withConfiguredShortCategoryCopy } from '@/lib/content/category-copy';
 import { contentRepository } from '@/lib/content/repository';
+import { absoluteUrl } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
+import { siteConfig } from '@/lib/site/config';
 
-const homeDescription = 'Guides de musculation, exercices, nutrition et récupération pour mieux organiser vos entraînements et progresser avec une méthode claire.';
 const websiteJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: 'Body Training Guide',
-  url: 'https://bodytrainingguide.com/fr',
+  name: siteConfig.name,
+  url: absoluteUrl('/fr'),
   inLanguage: 'fr',
-  description: 'Guides de musculation, exercices, nutrition et récupération pour mieux organiser vos entraînements.'
+  description: siteConfig.description
 };
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata({
-    title: 'Body Training Guide | Guides de musculation et nutrition',
-    description: homeDescription,
+    title: siteConfig.defaultMetaTitle,
+    description: siteConfig.description,
     path: '/fr',
-    canonicalUrl: 'https://bodytrainingguide.com/fr',
     locale: 'fr',
     hreflang: [
-      { hreflang: 'en', href: 'https://bodytrainingguide.com' },
-      { hreflang: 'fr', href: 'https://bodytrainingguide.com/fr' },
-      { hreflang: 'x-default', href: 'https://bodytrainingguide.com' }
+      { hreflang: 'en', href: absoluteUrl('/') },
+      { hreflang: 'fr', href: absoluteUrl('/fr') },
+      { hreflang: 'x-default', href: absoluteUrl('/') }
     ]
   });
 }
@@ -43,29 +43,16 @@ export default async function FrenchHomePage() {
   ]);
   const displayablePosts = recentPosts.length > 0 ? recentPosts : featuredPosts;
   const primaryPosts = displayablePosts.length >= 3 ? displayablePosts.slice(0, 3) : displayablePosts;
-  const normalizedCategories = categories.map((category) => withStrengthTrainingShortCopy(category, locale));
+  const normalizedCategories = categories.map(withConfiguredShortCategoryCopy);
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
       <section className="border-b border-slate-200 bg-slate-50 py-16">
         <Container>
-          <p className="text-sm font-semibold uppercase tracking-widest text-brand-700">Body Training Guide</p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-            Construisez un physique fort avec une méthode claire.
-          </h1>
-          <p className="mt-5 max-w-2xl text-base text-slate-600">{homeDescription}</p>
-        </Container>
-      </section>
-
-      <section className="py-14">
-        <Container>
-          <div className="max-w-3xl">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Guides de musculation pour progresser avec une méthode simple</h2>
-            <p className="mt-4 text-base leading-7 text-slate-600">
-              Body Training Guide regroupe des articles sur la musculation, les exercices, les groupes musculaires, la nutrition et la récupération. L’objectif est d’aider à comprendre quoi travailler, comment organiser ses séances et comment progresser sans ajouter de complexité inutile.
-            </p>
-          </div>
+          <p className="text-sm font-semibold uppercase tracking-widest text-brand-700">{siteConfig.name}</p>
+          <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">{siteConfig.defaultMetaTitle}</h1>
+          <p className="mt-5 max-w-2xl text-base text-slate-600">{siteConfig.description}</p>
         </Container>
       </section>
 

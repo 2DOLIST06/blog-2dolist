@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { Container } from '@/components/ui/Container';
 import { buildMetadata } from '@/lib/seo/metadata';
+import { siteConfig } from '@/lib/site/config';
 
 export const metadata: Metadata = buildMetadata({
-  title: 'Contact | Body Training Guide',
+  title: `Contact | ${siteConfig.name}`,
   description: 'Contactez notre équipe éditoriale.',
   path: '/contact'
 });
