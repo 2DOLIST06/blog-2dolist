@@ -7,7 +7,6 @@ import { getAuthorPath } from '@/lib/i18n/routing';
 import { absoluteUrl, buildMetadata } from '@/lib/seo/metadata';
 import { siteConfig } from '@/lib/site/config';
 import { getPageSeo } from '@/lib/seo/pages';
-import { absoluteUrl, buildMetadata } from '@/lib/seo/metadata';
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata(await getPageSeo('authors', 'en', {
