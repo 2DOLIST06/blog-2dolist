@@ -67,6 +67,31 @@ const escapeHtmlAttribute = (value: string) =>
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
+const sanitizeCustomHtmlBlock = (html: string) => {
+  if (typeof window === 'undefined') return html;
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  template.content.querySelectorAll('script').forEach((node) => node.remove());
+  template.content.querySelectorAll('*').forEach((element) => {
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim().toLowerCase();
+      if (name.startsWith('on') || ((name === 'href' || name === 'src') && value.startsWith('javascript:'))) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  });
+  return template.innerHTML.trim();
+};
+
+const getSelectedHtmlBlock = (root: HTMLElement | null) => {
+  const block = getSelectionElement()?.closest('[data-admin-html-block="html"]');
+  return block && root?.contains(block) ? (block as HTMLElement) : null;
+};
+
+const createHtmlBlock = (html: string) =>
+  `<div data-admin-html-block="html" data-admin-block-id="bloc-${Date.now()}" data-admin-block-label="Bloc HTML / widget">${html}</div><p><br></p>`;
+
 export function RichContentEditor({
   value,
   onChange,
@@ -81,6 +106,9 @@ export function RichContentEditor({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [htmlBlockValue, setHtmlBlockValue] = useState('');
+  const [editingHtmlBlockId, setEditingHtmlBlockId] = useState<string | null>(null);
+  const [htmlBlockError, setHtmlBlockError] = useState('');
   const [activeFormats, setActiveFormats] = useState<ActiveFormats>(emptyFormats);
 
   useEffect(() => {
@@ -190,6 +218,87 @@ export function RichContentEditor({
     saveSelection();
   };
 
+  const openAddHtmlBlock = () => {
+    saveSelection();
+    setEditingHtmlBlockId(null);
+    setHtmlBlockValue(' ');
+    setHtmlBlockError('');
+  };
+
+  const openEditHtmlBlock = () => {
+    saveSelection();
+    const block = getSelectedHtmlBlock(ref.current);
+    if (!block) {
+      setHtmlBlockError('Cliquez d’abord dans un bloc HTML / widget à modifier.');
+      setEditingHtmlBlockId(null);
+      setHtmlBlockValue('');
+      return;
+    }
+    setEditingHtmlBlockId(block.dataset.adminBlockId || 'selected');
+    setHtmlBlockValue(block.innerHTML.trim());
+    setHtmlBlockError('');
+  };
+
+  const saveHtmlBlock = () => {
+    const sanitizedHtml = sanitizeCustomHtmlBlock(htmlBlockValue);
+    if (!sanitizedHtml) {
+      setHtmlBlockError('Le bloc HTML est vide après nettoyage.');
+      return;
+    }
+
+    if (editingHtmlBlockId) {
+      const block = getSelectedHtmlBlock(ref.current) || ref.current?.querySelector<HTMLElement>(`[data-admin-block-id="${CSS.escape(editingHtmlBlockId)}"]`);
+      if (!block) {
+        setHtmlBlockError('Bloc HTML introuvable dans le contenu.');
+        return;
+      }
+      block.innerHTML = sanitizedHtml;
+      emit();
+      saveSelection();
+    } else {
+      restoreSelection();
+      document.execCommand('insertHTML', false, createHtmlBlock(sanitizedHtml));
+      emit();
+      saveSelection();
+    }
+
+    setHtmlBlockValue('');
+    setEditingHtmlBlockId(null);
+    setHtmlBlockError('');
+    refreshActiveFormats();
+  };
+
+  const cancelHtmlBlock = () => {
+    setHtmlBlockValue('');
+    setEditingHtmlBlockId(null);
+    setHtmlBlockError('');
+  };
+
+  const deleteSelectedHtmlBlock = () => {
+    const block = getSelectedHtmlBlock(ref.current);
+    if (!block) {
+      setHtmlBlockError('Cliquez d’abord dans un bloc HTML / widget à supprimer.');
+      return;
+    }
+    block.remove();
+    setHtmlBlockError('');
+    emit();
+  };
+
+  const moveSelectedHtmlBlock = (direction: 'up' | 'down') => {
+    const block = getSelectedHtmlBlock(ref.current);
+    if (!block) {
+      setHtmlBlockError('Cliquez d’abord dans un bloc HTML / widget à déplacer.');
+      return;
+    }
+    const sibling = direction === 'up' ? block.previousElementSibling : block.nextElementSibling;
+    if (!sibling || !block.parentElement) return;
+    if (direction === 'up') block.parentElement.insertBefore(block, sibling);
+    else block.parentElement.insertBefore(sibling, block);
+    setHtmlBlockError('');
+    emit();
+  };
+
   const addImageByUrl = () => {
     saveSelection();
     const url = window.prompt('URL de l’image (https://...)');
@@ -269,6 +378,14 @@ export function RichContentEditor({
         <button type="button" className={buttonClass()} onClick={addImageByUrl}>Image URL</button>
         <button type="button" className={buttonClass()} onClick={() => { saveSelection(); fileInputRef.current?.click(); }}>Image fichier</button>
         <button type="button" className={buttonClass()} onClick={editSelectedImageAlt}>Alt image</button>
+
+        <span className="mx-1 h-6 w-px bg-slate-700" />
+
+        <button type="button" className={buttonClass()} onClick={openAddHtmlBlock}>Ajouter un bloc HTML</button>
+        <button type="button" className={buttonClass()} onClick={openEditHtmlBlock}>Modifier bloc HTML</button>
+        <button type="button" className={buttonClass()} onClick={deleteSelectedHtmlBlock}>Supprimer bloc HTML</button>
+        <button type="button" className={buttonClass()} onClick={() => moveSelectedHtmlBlock('up')}>Monter bloc</button>
+        <button type="button" className={buttonClass()} onClick={() => moveSelectedHtmlBlock('down')}>Descendre bloc</button>
         <input
           ref={fileInputRef}
           type="file"
@@ -286,11 +403,32 @@ export function RichContentEditor({
         <button type="button" className={buttonClass()} onClick={() => exec('redo')}>Redo</button>
       </div>
 
+      {editingHtmlBlockId !== null || htmlBlockValue || htmlBlockError ? (
+        <div className="border-b border-slate-700 bg-slate-900 p-4">
+          <label className="block text-sm font-semibold text-slate-100" htmlFor="html-block-editor">
+            {editingHtmlBlockId ? 'Modifier le bloc HTML / widget' : 'Nouveau bloc HTML / widget'}
+          </label>
+          <p className="mt-1 text-xs text-slate-400">Collez uniquement le markup du widget. Les balises &lt;script&gt;, attributs on* et URLs javascript: sont retirés avant insertion dans l’éditeur.</p>
+          <textarea
+            id="html-block-editor"
+            className="mt-3 min-h-40 w-full rounded border border-slate-600 bg-white p-3 font-mono text-xs text-slate-950 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
+            value={htmlBlockValue}
+            onChange={(e) => setHtmlBlockValue(e.target.value)}
+            placeholder={'<div data-gyg-widget="..."></div>'}
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" className={buttonClass()} onClick={saveHtmlBlock}>{editingHtmlBlockId ? 'Mettre à jour le bloc' : 'Insérer le bloc à la position du curseur'}</button>
+            <button type="button" className={buttonClass()} onClick={cancelHtmlBlock}>Annuler</button>
+          </div>
+          {htmlBlockError ? <p className="mt-2 text-xs text-red-300">{htmlBlockError}</p> : null}
+        </div>
+      ) : null}
+
       <div
         ref={ref}
         contentEditable
         suppressContentEditableWarning
-        className="min-h-[520px] w-full bg-white p-8 text-base leading-8 text-slate-900 outline-none [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_figcaption]:mt-2 [&_figcaption]:text-center [&_figcaption]:text-sm [&_figcaption]:text-slate-500 [&_figure]:my-6 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:text-xl [&_h3]:font-semibold [&_h4]:text-lg [&_h4]:font-semibold [&_img]:max-w-full [&_img]:rounded-xl [&_ol]:list-decimal [&_ol]:pl-6 [&_pre]:rounded-lg [&_pre]:bg-slate-100 [&_pre]:p-4 [&_ul]:list-disc [&_ul]:pl-6"
+        className="min-h-[520px] w-full bg-white p-8 text-base leading-8 text-slate-900 outline-none [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_figcaption]:mt-2 [&_figcaption]:text-center [&_figcaption]:text-sm [&_figcaption]:text-slate-500 [&_figure]:my-6 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:text-xl [&_h3]:font-semibold [&_h4]:text-lg [&_h4]:font-semibold [&_[data-admin-html-block='html']]:my-6 [&_[data-admin-html-block='html']]:rounded-xl [&_[data-admin-html-block='html']]:border [&_[data-admin-html-block='html']]:border-dashed [&_[data-admin-html-block='html']]:border-amber-400 [&_[data-admin-html-block='html']]:bg-amber-50 [&_[data-admin-html-block='html']]:p-4 [&_img]:max-w-full [&_img]:rounded-xl [&_ol]:list-decimal [&_ol]:pl-6 [&_pre]:rounded-lg [&_pre]:bg-slate-100 [&_pre]:p-4 [&_ul]:list-disc [&_ul]:pl-6"
         onBlur={saveSelection}
         onInput={() => {
           emit();
