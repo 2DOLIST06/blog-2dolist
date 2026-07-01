@@ -17,6 +17,14 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     <html lang={locale}>
+       <head>
+        <script
+          async
+          defer
+          src="https://widget.getyourguide.com/dist/pa.umd.production.min.js"
+          data-gyg-partner-id="32QOCNG"
+        />
+      </head>
       <GoogleTagManager gtmId="GTM-PGQQXCNN" />
       <body>
         <AppLayoutBoundary>{children}</AppLayoutBoundary>
