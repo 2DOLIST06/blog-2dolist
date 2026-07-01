@@ -6,7 +6,6 @@ import { SectionHeading } from '@/components/blog/SectionHeading';
 import { Container } from '@/components/ui/Container';
 import { withConfiguredShortCategoryCopy } from '@/lib/content/category-copy';
 import { contentRepository } from '@/lib/content/repository';
-import { absoluteUrl } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { siteConfig } from '@/lib/site/config';
 
@@ -15,7 +14,7 @@ const websiteJsonLd = {
   '@type': 'WebSite',
   name: siteConfig.name,
   url: siteConfig.baseUrl,
-  inLanguage: 'en',
+  inLanguage: 'fr',
   description: siteConfig.description
 };
 
@@ -24,17 +23,12 @@ export async function generateMetadata(): Promise<Metadata> {
     title: siteConfig.defaultMetaTitle,
     description: siteConfig.description,
     path: '/',
-    locale: 'en',
-    hreflang: [
-      { hreflang: 'en', href: absoluteUrl('/') },
-      { hreflang: 'fr', href: absoluteUrl('/fr') },
-      { hreflang: 'x-default', href: absoluteUrl('/') }
-    ]
+    locale: 'fr'
   });
 }
 
 export default async function HomePage() {
-  const locale = 'en';
+  const locale = 'fr';
   const [featuredPosts, categories, recentPosts, authors] = await Promise.all([
     contentRepository.getFeaturedPostsByLocale(locale, 3),
     contentRepository.getAllCategoriesByLocale(locale),
@@ -59,7 +53,7 @@ export default async function HomePage() {
       {primaryPosts.length > 0 ? (
         <section className="py-14">
           <Container>
-            <SectionHeading>{displayablePosts.length >= 3 ? 'Featured articles' : 'Latest articles'}</SectionHeading>
+            <SectionHeading>{displayablePosts.length >= 3 ? 'Articles à la une' : 'Derniers articles'}</SectionHeading>
             <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {primaryPosts.map((post) => (
                 <PostCard key={post.id} post={post} author={authors.find((author) => author.slug === post.authorSlug)} category={normalizedCategories.find((category) => category.slug === post.categorySlug)} />
@@ -71,7 +65,7 @@ export default async function HomePage() {
 
       <section id="categories" className="py-14">
         <Container>
-          <SectionHeading>Categories</SectionHeading>
+          <SectionHeading>Catégories</SectionHeading>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {normalizedCategories.map((category) => (
               <CategoryCard key={category.id} category={category} locale={locale} />
@@ -82,7 +76,7 @@ export default async function HomePage() {
 
       <section className="py-14">
         <Container>
-          <NewsletterCta locale="en" />
+          <NewsletterCta locale="fr" />
         </Container>
       </section>
     </>

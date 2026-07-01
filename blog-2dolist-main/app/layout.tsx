@@ -1,21 +1,19 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
 import { GoogleTagManager } from '@next/third-parties/google';
 import './globals.css';
 import { AppLayoutBoundary } from './AppLayoutBoundary';
 import { siteConfig } from '@/lib/constants';
 import { buildMetadata } from '@/lib/seo/metadata';
-import type { Locale } from '@/lib/i18n/routing';
 
 export const metadata: Metadata = buildMetadata({
   title: siteConfig.defaultMetaTitle,
   description: siteConfig.description,
   path: '/',
-  locale: 'en'
+  locale: 'fr'
 });
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const locale = ((await headers()).get('x-blog-locale') === 'fr' ? 'fr' : 'en') satisfies Locale;
+  const locale = 'fr';
 
   return (
     <html lang={locale}>

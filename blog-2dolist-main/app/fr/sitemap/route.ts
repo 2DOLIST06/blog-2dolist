@@ -1,5 +1,7 @@
-import { sitemapResponse } from '@/lib/seo/sitemap';
+import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
-export const GET = () => sitemapResponse('fr');
+export function GET() {
+  redirect('/sitemap.xml');
+}

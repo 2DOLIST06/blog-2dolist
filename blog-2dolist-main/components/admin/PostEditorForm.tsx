@@ -86,7 +86,7 @@ const empty: PostModel = {
   jsonLd: '',
   status: 'DRAFT',
   authorId: '',
-  locale: 'en',
+  locale: 'fr',
   translationGroupId: '',
   translations: []
 };
@@ -218,7 +218,7 @@ const normalizeInitialPost = (initialPost?: InitialPost): PostModel => {
     contentJson: { type: 'doc', html: contentHtml },
     isActive: initialPost?.isActive ?? status === 'PUBLISHED',
     isIndexable: initialPost?.isIndexable ?? status === 'PUBLISHED',
-    locale: initialPost?.locale === 'fr' ? 'fr' : 'en',
+    locale: 'fr',
     translationGroupId: initialPost?.translationGroupId || initialPost?.id || '',
     translations:
       initialPost?.translations
@@ -257,7 +257,7 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
 
   useEffect(() => {
     if (initialPost) return;
-    const locale = searchParams.get('locale') === 'fr' ? 'fr' : searchParams.get('locale') === 'en' ? 'en' : undefined;
+    const locale = searchParams.get('locale') === 'fr' ? 'fr' : undefined;
     const translationGroupId = searchParams.get('translationGroupId') || '';
     const authorId = searchParams.get('authorId') || '';
     const categoryId = searchParams.get('categoryId') || '';
@@ -529,9 +529,7 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
   const selectedCategory = categories.find((category) => category.id === post.categoryId || category.slug === post.categorySlug);
   const categorySelectValue = selectedCategory?.id || post.categoryId || post.categorySlug;
   const coverPreviewUrl = post.coverImageUrl || post.heroImageUrl;
-  const publicUrl = post.slug.trim() ? absoluteUrl(getArticlePath(post.locale, post.slug.trim())) : '';
-  const oppositeLocale: Locale = post.locale === 'en' ? 'fr' : 'en';
-  const oppositeTranslation = post.translations.find((translation) => translation.locale === oppositeLocale);
+  const publicUrl = post.slug.trim() ? absoluteUrl(getArticlePath('fr', post.slug.trim())) : '';
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -573,21 +571,7 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
         <input className={fieldClass} placeholder="slug" value={post.slug} onChange={(e) => setPost({ ...post, slug: e.target.value })} />
         <div className="space-y-2">
           <p className={labelClass}>Langue</p>
-          <div className="grid grid-cols-2 gap-2">
-            {(['en', 'fr'] as Locale[]).map((locale) => (
-              <button
-                key={locale}
-                type="button"
-                className={`${secondaryButtonClass} ${post.locale === locale ? 'border-brand-500 bg-brand-950 text-white' : ''}`}
-                onClick={() => switchLocale(locale)}
-              >
-                {locale === 'en' ? 'English / en' : 'Français / fr'}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-slate-400">
-            Le switch charge l’article traduit existant ou prépare une nouvelle traduction sans modifier la locale de l’article source.
-          </p>
+          <p className="rounded border border-slate-700 p-2 text-sm text-slate-200">Français / fr</p>
         </div>
         <input className={fieldClass} placeholder="translationGroupId" value={post.translationGroupId} onChange={(e) => setPost({ ...post, translationGroupId: e.target.value })} />
         {publicUrl ? <p className="rounded border border-slate-700 p-2 text-xs text-slate-300">URL publique : {publicUrl}</p> : null}

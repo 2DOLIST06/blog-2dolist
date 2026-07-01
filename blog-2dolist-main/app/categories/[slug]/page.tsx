@@ -4,54 +4,49 @@ import { PostCard } from '@/components/blog/PostCard';
 import { Container } from '@/components/ui/Container';
 import { withConfiguredLongCategoryCopy } from '@/lib/content/category-copy';
 import { contentRepository } from '@/lib/content/repository';
-import { absoluteUrl, getCategoryPath } from '@/lib/i18n/routing';
+import { getCategoryPath } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { siteConfig } from '@/lib/site/config';
 
 export async function generateStaticParams() {
-  const categories = await contentRepository.getAllCategoriesByLocale('en');
+  const categories = await contentRepository.getAllCategoriesByLocale('fr');
   return categories.map((category) => ({ slug: category.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const rawCategory = await contentRepository.getCategoryBySlugAndLocale(slug, 'en');
+  const rawCategory = await contentRepository.getCategoryBySlugAndLocale(slug, 'fr');
   const category = rawCategory ? withConfiguredLongCategoryCopy(rawCategory) : undefined;
-  const path = getCategoryPath('en', slug);
+  const path = getCategoryPath('fr', slug);
 
   if (!category) {
     return buildMetadata({
-      title: `Category not found | ${siteConfig.name}`,
-      description: 'Category unavailable.',
+      title: `Catégorie introuvable | ${siteConfig.name}`,
+      description: 'Catégorie indisponible.',
       path,
-      locale: 'en',
+      locale: 'fr',
       noIndex: true
     });
   }
 
   return buildMetadata({
-    title: `${category.title} | Category`,
+    title: `${category.title} | Catégorie`,
     description: category.description,
-    path: getCategoryPath('en', category.slug),
-    locale: 'en',
-    hreflang: [
-      { hreflang: 'en', href: absoluteUrl(getCategoryPath('en', category.slug)) },
-      { hreflang: 'fr', href: absoluteUrl(getCategoryPath('fr', category.slug)) },
-      { hreflang: 'x-default', href: absoluteUrl(getCategoryPath('en', category.slug)) }
-    ]
+    path: getCategoryPath('fr', category.slug),
+    locale: 'fr'
   });
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const rawCategory = await contentRepository.getCategoryBySlugAndLocale(slug, 'en');
+  const rawCategory = await contentRepository.getCategoryBySlugAndLocale(slug, 'fr');
   const category = rawCategory ? withConfiguredLongCategoryCopy(rawCategory) : undefined;
 
   if (!category) notFound();
 
   const [posts, authors] = await Promise.all([
-    contentRepository.getPostsByCategoryAndLocale(slug, 'en'),
-    contentRepository.getAllAuthorsByLocale('en')
+    contentRepository.getPostsByCategoryAndLocale(slug, 'fr'),
+    contentRepository.getAllAuthorsByLocale('fr')
   ]);
 
   return (

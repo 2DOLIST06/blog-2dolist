@@ -1,12 +1,12 @@
 import type { MetadataRoute } from 'next';
 import { contentRepository } from '@/lib/content/repository';
 import { siteConfig } from '@/lib/constants';
-import { absoluteUrl, getArticlePath, getCategoryPath } from '@/lib/i18n/routing';
+import { absoluteUrl, getCategoryPath } from '@/lib/i18n/routing';
 import type { Locale } from '@/lib/i18n/routing';
 
 const staticPathsByLocale: Record<Locale, string[]> = {
-  en: ['/', '/articles', '/categories', '/about', '/contact'],
-  fr: ['/fr', '/fr/articles', '/fr/categories', '/fr/about', '/fr/contact']
+  en: [],
+  fr: ['/', '/articles', '/categories', '/about', '/contact']
 };
 
 export const getLocalizedSitemap = async (locale: Locale): Promise<MetadataRoute.Sitemap> => {
@@ -21,7 +21,7 @@ export const getLocalizedSitemap = async (locale: Locale): Promise<MetadataRoute
   }));
 
   const postPages: MetadataRoute.Sitemap = posts.map((post) => ({
-    url: post.canonicalUrl ?? absoluteUrl(post.path ?? getArticlePath(locale, post.slug)),
+    url: absoluteUrl(post.path ?? `/articles/${post.slug}`),
     lastModified: new Date(post.updatedAt ?? post.publishedAt)
   }));
 
@@ -60,4 +60,4 @@ export const sitemapResponse = async (locale: Locale) =>
     }
   });
 
-export const robotsTxt = `User-agent: *\nAllow: /\nSitemap: ${siteConfig.baseUrl}/sitemap.xml\nSitemap: ${siteConfig.baseUrl}/fr/sitemap.xml\n`;
+export const robotsTxt = `User-agent: *\nAllow: /\nSitemap: ${siteConfig.baseUrl}/sitemap.xml\n`;

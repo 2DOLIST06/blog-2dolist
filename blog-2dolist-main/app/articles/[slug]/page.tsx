@@ -5,25 +5,25 @@ import { contentRepository } from '@/lib/content/repository';
 import { buildMissingPostMetadata, buildPostMetadata } from '@/lib/seo/post-metadata';
 
 export async function generateStaticParams() {
-  const posts = await contentRepository.getAllPostsByLocale('en');
+  const posts = await contentRepository.getAllPostsByLocale('fr');
   return posts.map((post) => ({ slug: post.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const post = await contentRepository.getPostBySlugAndLocale(slug, 'en');
-  return post ? buildPostMetadata(post) : buildMissingPostMetadata(slug, 'en');
+  const post = await contentRepository.getPostBySlugAndLocale(slug, 'fr');
+  return post ? buildPostMetadata(post) : buildMissingPostMetadata(slug, 'fr');
 }
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = await contentRepository.getPostBySlugAndLocale(slug, 'en');
+  const post = await contentRepository.getPostBySlugAndLocale(slug, 'fr');
 
   if (!post) return notFound();
 
   const [author, category, relatedPosts] = await Promise.all([
-    contentRepository.getAuthorBySlugAndLocale(post.authorSlug, 'en'),
-    contentRepository.getCategoryBySlugAndLocale(post.categorySlug, 'en'),
+    contentRepository.getAuthorBySlugAndLocale(post.authorSlug, 'fr'),
+    contentRepository.getCategoryBySlugAndLocale(post.categorySlug, 'fr'),
     contentRepository.getRelatedPosts(post, 3)
   ]);
 
