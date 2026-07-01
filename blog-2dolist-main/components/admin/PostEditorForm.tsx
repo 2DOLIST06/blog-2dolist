@@ -215,7 +215,7 @@ const normalizeInitialPost = (initialPost?: InitialPost): PostModel => {
     coverImageId: initialPost?.coverImageId || initialPost?.coverImage?.id || '',
     coverImageUrl,
     contentHtml,
-    contentJson: { type: 'doc', html: contentHtml },
+    contentJson: initialPost?.contentJson ? { ...initialPost.contentJson, html: contentHtml } : { type: 'doc', html: contentHtml },
     isActive: initialPost?.isActive ?? status === 'PUBLISHED',
     isIndexable: initialPost?.isIndexable ?? status === 'PUBLISHED',
     locale: 'fr',

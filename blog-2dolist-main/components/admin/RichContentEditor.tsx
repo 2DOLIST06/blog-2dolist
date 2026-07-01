@@ -5,7 +5,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 export interface RichContentValue {
   type: 'doc';
   html: string;
+  blocks?: RichContentBlock[];
 }
+
+type RichContentBlock = Record<string, unknown> & {
+  id?: string;
+  type?: string;
+  html?: string;
+  content?: string;
+  value?: string;
+  markup?: string;
+  rawHtml?: string;
+  body?: string;
+  label?: string;
+};
 
 type ActiveFormats = {
   block: string;
@@ -92,6 +105,55 @@ const getSelectedHtmlBlock = (root: HTMLElement | null) => {
 const createHtmlBlock = (html: string) =>
   `<div data-admin-html-block="html" data-admin-block-id="bloc-${Date.now()}" data-admin-block-label="Bloc HTML / widget">${html}</div><p><br></p>`;
 
+const getBlockHtml = (block: RichContentBlock) => {
+  for (const key of ['html', 'content', 'value', 'markup', 'rawHtml', 'body'] as const) {
+    const value = block[key];
+    if (typeof value === 'string') return value;
+  }
+  return '';
+};
+
+const escapeHtmlAttributeValue = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+const blockToEditableHtml = (block: RichContentBlock, index: number) => {
+  const rawHtml = getBlockHtml(block);
+  if (block.type === 'html') {
+    const id = typeof block.id === 'string' && block.id.trim() ? block.id : `bloc-${index}`;
+    const label = typeof block.label === 'string' && block.label.trim() ? block.label : 'Bloc HTML / widget';
+    return `<div data-admin-content-block-index="${index}" data-admin-html-block="html" data-admin-block-id="${escapeHtmlAttributeValue(id)}" data-admin-block-label="${escapeHtmlAttributeValue(label)}">${rawHtml}</div>`;
+  }
+  return `<div data-admin-content-block-index="${index}">${rawHtml}</div>`;
+};
+
+const valueToEditableHtml = (value: RichContentValue) =>
+  Array.isArray(value.blocks) && value.blocks.length > 0 ? value.blocks.map(blockToEditableHtml).join('') : value.html;
+
+const serializeEditorValue = (root: HTMLElement | null, previousValue: RichContentValue): RichContentValue => {
+  const html = root?.innerHTML ?? '';
+  if (!Array.isArray(previousValue.blocks) || previousValue.blocks.length === 0 || !root) return { ...previousValue, html };
+
+  const blocks = previousValue.blocks.map((block, index) => {
+    const element = root.querySelector<HTMLElement>(`[data-admin-content-block-index="${index}"]`);
+    if (!element) return block;
+    const nextHtml = element.innerHTML;
+    if (block.type === 'html') return { ...block, html: nextHtml };
+    if (typeof block.html === 'string') return { ...block, html: nextHtml };
+    if (typeof block.content === 'string') return { ...block, content: nextHtml };
+    if (typeof block.value === 'string') return { ...block, value: nextHtml };
+    if (typeof block.markup === 'string') return { ...block, markup: nextHtml };
+    if (typeof block.rawHtml === 'string') return { ...block, rawHtml: nextHtml };
+    if (typeof block.body === 'string') return { ...block, body: nextHtml };
+    return { ...block, html: nextHtml };
+  });
+
+  return { ...previousValue, html, blocks };
+};
+
 export function RichContentEditor({
   value,
   onChange,
@@ -112,10 +174,11 @@ export function RichContentEditor({
   const [activeFormats, setActiveFormats] = useState<ActiveFormats>(emptyFormats);
 
   useEffect(() => {
-    if (ref.current && ref.current.innerHTML !== value.html) ref.current.innerHTML = value.html;
-  }, [value.html]);
+    const nextHtml = valueToEditableHtml(value);
+    if (ref.current && ref.current.innerHTML !== nextHtml) ref.current.innerHTML = nextHtml;
+  }, [value]);
 
-  const emit = useCallback(() => onChange({ type: 'doc', html: ref.current?.innerHTML ?? '' }), [onChange]);
+  const emit = useCallback(() => onChange(serializeEditorValue(ref.current, value)), [onChange, value]);
 
   const saveSelection = useCallback(() => {
     const selection = document.getSelection();
@@ -258,6 +321,29 @@ export function RichContentEditor({
     } else {
       restoreSelection();
       document.execCommand('insertHTML', false, createHtmlBlock(sanitizedHtml));
+      const newBlock = ref.current?.querySelector<HTMLElement>('[data-admin-block-id^="bloc-"]:not([data-admin-content-block-index])');
+      if (newBlock && Array.isArray(value.blocks)) {
+        const nextIndex = value.blocks.length;
+        newBlock.dataset.adminContentBlockIndex = String(nextIndex);
+        onChange({
+          ...serializeEditorValue(ref.current, value),
+          blocks: [
+            ...value.blocks,
+            {
+              id: newBlock.dataset.adminBlockId,
+              type: 'html',
+              html: sanitizedHtml,
+              label: newBlock.dataset.adminBlockLabel || 'Bloc HTML / widget'
+            }
+          ]
+        });
+        saveSelection();
+        setHtmlBlockValue('');
+        setEditingHtmlBlockId(null);
+        setHtmlBlockError('');
+        refreshActiveFormats();
+        return;
+      }
       emit();
       saveSelection();
     }
