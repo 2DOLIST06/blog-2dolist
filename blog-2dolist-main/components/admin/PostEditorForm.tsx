@@ -587,11 +587,6 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
             </ul>
           </div>
         ) : null}
-        {post.id ? (
-          <button type="button" className={secondaryButtonClass} onClick={() => switchLocale(oppositeLocale)}>
-            {oppositeTranslation ? `Ouvrir la version ${oppositeLocale.toUpperCase()}` : `Préparer la version ${oppositeLocale.toUpperCase()}`}
-          </button>
-        ) : null}
         {translationNotice ? <p className="rounded border border-amber-600 bg-amber-950/40 p-2 text-sm text-amber-100">{translationNotice}</p> : null}
         <section className="space-y-2 rounded border border-slate-700 p-3">
           <p className={labelClass}>Export / import traduction</p>
