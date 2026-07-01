@@ -9,10 +9,8 @@ export const buildPostMetadata = (post: Post): Metadata =>
   buildMetadata({
     title: `${post.title} | ${siteConfig.name}`,
     description: post.description,
-    canonicalUrl: post.canonicalUrl,
-    path: getPostHref(post, post.locale),
-    locale: post.locale,
-    hreflang: post.hreflang,
+    path: getPostHref(post, 'fr'),
+    locale: 'fr',
     image: post.coverImage,
     type: 'article',
     publishedTime: post.publishedAt,
@@ -22,8 +20,8 @@ export const buildPostMetadata = (post: Post): Metadata =>
 
 export const buildMissingPostMetadata = (slugOrPath: string, locale: Locale): Metadata =>
   buildMetadata({
-    title: locale === 'fr' ? `Article introuvable | ${siteConfig.name}` : `Article not found | ${siteConfig.name}`,
-    description: locale === 'fr' ? "L’article demandé est introuvable." : 'The requested article was not found.',
+    title: `Article introuvable | ${siteConfig.name}`,
+    description: "L’article demandé est introuvable.",
     path: slugOrPath.startsWith('/') ? slugOrPath : getArticlePath(locale, slugOrPath),
     locale,
     noIndex: true

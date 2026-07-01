@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getCategoryPath, type Locale } from '@/lib/i18n/routing';
 import type { Category } from '@/types/content';
 
-export function CategoryCard({ category, locale = 'en' }: { category: Category; locale?: Locale }) {
+export function CategoryCard({ category, locale = 'fr' }: { category: Category; locale?: Locale }) {
   return (
     <Link
       href={getCategoryPath(locale, category.slug)}

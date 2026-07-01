@@ -10,7 +10,7 @@ import { Container } from '@/components/ui/Container';
 import { extractHeadingsFromHtml } from '@/lib/content/headings';
 import { formatDate } from '@/lib/content/presenters';
 import { getPostHref } from '@/lib/content/urls';
-import { absoluteUrl, getArticlePath, getArticlesPath, getHomePath, type Locale } from '@/lib/i18n/routing';
+import { absoluteUrl, getArticlesPath, getHomePath, type Locale } from '@/lib/i18n/routing';
 import { blogPostingJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld';
 import type { Author, Category, Post, RelatedPostSummary } from '@/types/content';
 
@@ -22,37 +22,22 @@ interface ArticlePageViewProps {
 }
 
 const labelsByLocale = {
-  en: {
-    home: 'Home',
-    articles: 'Articles',
-    readTranslation: 'Lire en français',
-    reading: 'min read',
-    related: 'Related articles',
-    fallbackCategory: 'Category',
-    fallbackAuthor: 'Editorial team',
-    translationFallback: '/fr/articles'
-  },
   fr: {
     home: 'Accueil',
     articles: 'Articles',
-    readTranslation: 'Read in English',
     reading: 'min de lecture',
     related: 'Articles liés',
     fallbackCategory: 'Catégorie',
-    fallbackAuthor: 'Équipe éditoriale',
-    translationFallback: '/articles'
+    fallbackAuthor: 'Équipe éditoriale'
   }
-} satisfies Record<Locale, Record<string, string>>;
+} satisfies Record<'fr', Record<string, string>>;
 
 export function ArticlePageView({ post, author, category, relatedPosts }: ArticlePageViewProps) {
-  const labels = labelsByLocale[post.locale];
+  const labels = labelsByLocale.fr;
   const articleHeadings = extractHeadingsFromHtml(post.contentHtml);
   const articlePath = getPostHref(post, post.locale);
   const articleUrl = post.canonicalUrl ?? absoluteUrl(articlePath);
   const authorName = author?.name ?? labels.fallbackAuthor;
-  const translationLocale: Locale = post.locale === 'fr' ? 'en' : 'fr';
-  const translation = post.translations?.find((item) => item.locale === translationLocale);
-  const translationHref = translation?.path ?? translation?.canonicalUrl ?? (translation?.slug ? getArticlePath(translation.locale, translation.slug) : labels.translationFallback);
 
   const postJsonLd = blogPostingJsonLd({
     title: post.title,
@@ -78,11 +63,6 @@ export function ArticlePageView({ post, author, category, relatedPosts }: Articl
       <article className="py-10">
         <Breadcrumbs items={[{ label: labels.home, href: getHomePath(post.locale) }, { label: labels.articles, href: getArticlesPath(post.locale) }, { label: post.title, href: articlePath }]} />
 
-        <div className="mb-5">
-          <Link href={translationHref} className="rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700">
-            {labels.readTranslation}
-          </Link>
-        </div>
 
         <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-slate-900">{post.title}</h1>
         <p className="mt-4 max-w-3xl text-lg text-slate-600">{post.description}</p>

@@ -21,7 +21,7 @@ export const blogPostingJsonLd = (props: {
   datePublished: props.datePublished,
   dateModified: props.dateModified ?? props.datePublished,
   articleSection: props.category,
-  inLanguage: props.locale ?? 'en',
+  inLanguage: props.locale ?? 'fr',
   author: {
     '@type': 'Person',
     name: props.authorName
@@ -30,7 +30,7 @@ export const blogPostingJsonLd = (props: {
     '@type': 'Organization',
     name: siteConfig.name
   },
-  mainEntityOfPage: props.url ?? absoluteUrl(getArticlePath(props.locale ?? 'en', props.slug))
+  mainEntityOfPage: props.url ?? absoluteUrl(getArticlePath(props.locale ?? 'fr', props.slug))
 });
 
 export const breadcrumbJsonLd = (items: { name: string; path: string }[]) => ({

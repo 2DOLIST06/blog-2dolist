@@ -1,9 +1,7 @@
-import { robotsTxt } from '@/lib/seo/sitemap';
+import { redirect } from 'next/navigation';
 
-export const GET = () =>
-  new Response(robotsTxt, {
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, max-age=0, s-maxage=3600'
-    }
-  });
+export const dynamic = 'force-static';
+
+export function GET() {
+  redirect('/robots.txt');
+}

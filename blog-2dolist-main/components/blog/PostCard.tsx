@@ -14,14 +14,12 @@ interface PostCardProps {
 
 export function PostCard({ post, category, author, href }: PostCardProps) {
   const articleHref = href ?? getPostHref(post);
-  const byline = post.locale === 'fr' ? 'Équipe éditoriale' : 'Editorial team';
-  const readingLabel = post.locale === 'fr' ? 'min de lecture' : 'min read';
+  const byline = 'Équipe éditoriale';
+  const readingLabel = 'min de lecture';
   const excerpt =
     post.excerpt?.trim() ||
     post.description?.trim() ||
-    (post.locale === 'fr'
-      ? 'Un guide pour comprendre les bases du sujet et mieux organiser les informations essentielles.'
-      : 'A guide to understand the basics of the topic and organize the key information more effectively.');
+    'Un guide pour comprendre les bases du sujet et mieux organiser les informations essentielles.';
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
