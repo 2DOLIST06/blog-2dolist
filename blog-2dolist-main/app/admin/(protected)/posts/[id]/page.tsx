@@ -135,7 +135,28 @@ const toFaqItems = (value: unknown): FaqItem[] => {
     .filter((item): item is FaqItem => item !== null);
 };
 
+const getBlockHtml = (block: Record<string, unknown>) => {
+  for (const key of ['html', 'content', 'value', 'markup', 'rawHtml', 'body'] as const) {
+    const value = block[key];
+    if (typeof value === 'string') return value;
+  }
+  return '';
+};
+
+const blocksToHtml = (blocks: unknown) => {
+  if (!Array.isArray(blocks)) return '';
+  return blocks
+    .map((block) => (isRecord(block) ? getBlockHtml(block) : ''))
+    .filter(Boolean)
+    .join('');
+};
+
 const normalizeContentJson = (post: ApiPost): RichContentValue => {
+  if (isRecord(post.contentJson) && Array.isArray(post.contentJson.blocks)) {
+    const html = typeof post.contentJson.html === 'string' ? post.contentJson.html : blocksToHtml(post.contentJson.blocks);
+    return { type: 'doc', html, blocks: post.contentJson.blocks as RichContentValue['blocks'] };
+  }
+
   if (isRecord(post.contentJson) && post.contentJson.type === 'doc' && typeof post.contentJson.html === 'string') {
     return { type: 'doc', html: post.contentJson.html };
   }
