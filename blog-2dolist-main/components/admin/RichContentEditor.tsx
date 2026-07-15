@@ -249,6 +249,7 @@ export function RichContentEditor({
   const [htmlBlockError, setHtmlBlockError] = useState('');
   const [activeFormats, setActiveFormats] = useState<ActiveFormats>(emptyFormats);
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
+  const selectedImageRef = useRef<HTMLImageElement | null>(null);
   const [resizeHint, setResizeHint] = useState('');
 
   useEffect(() => {
@@ -259,7 +260,17 @@ export function RichContentEditor({
   const emit = useCallback(() => onChange(serializeEditorValue(ref.current, value)), [onChange, value]);
 
   const selectImage = useCallback((image: HTMLImageElement | null) => {
-    setSelectedImage(image && ref.current?.contains(image) ? image : null);
+    const nextImage = image && ref.current?.contains(image) ? image : null;
+    selectedImageRef.current = nextImage;
+    setSelectedImage(nextImage);
+  }, []);
+
+  const getCurrentSelectedImage = useCallback(() => {
+    const selectionImage = getSelectedImage();
+    if (selectionImage && ref.current?.contains(selectionImage)) return selectionImage;
+    const storedImage = selectedImageRef.current;
+    if (storedImage && ref.current?.contains(storedImage)) return storedImage;
+    return null;
   }, []);
 
   const saveSelection = useCallback(() => {
@@ -347,9 +358,9 @@ export function RichContentEditor({
 
   const editSelectedImageLink = () => {
     saveSelection();
-    const image = getSelectedImage();
-    if (!image || !ref.current?.contains(image)) {
-      setUploadError('Cliquez d’abord sur une image dans le contenu pour lui associer un lien.');
+    const image = getCurrentSelectedImage();
+    if (!image) {
+      setUploadError('Sélectionnez une image dans le contenu, puis cliquez sur « Lien image ».');
       return;
     }
 
@@ -387,11 +398,16 @@ export function RichContentEditor({
     refreshActiveFormats();
   };
 
+  const handleToolbarMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (target instanceof HTMLButtonElement) event.preventDefault();
+  };
+
   const editSelectedImageAlt = () => {
     saveSelection();
-    const image = getSelectedImage();
-    if (!image || !ref.current?.contains(image)) {
-      setUploadError('Cliquez d’abord sur une image dans le contenu pour modifier sa balise alt.');
+    const image = getCurrentSelectedImage();
+    if (!image) {
+      setUploadError('Sélectionnez une image dans le contenu, puis cliquez sur « Alt image ».');
       return;
     }
 
@@ -608,7 +624,10 @@ export function RichContentEditor({
 
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-950 shadow-xl shadow-black/20">
-      <div className="sticky top-24 z-30 flex flex-wrap items-center gap-2 rounded-t-xl border-b border-slate-700 bg-slate-900/95 p-3 shadow-lg shadow-slate-950/20 backdrop-blur">
+      <div
+        className="sticky top-24 z-30 flex flex-wrap items-center gap-2 rounded-t-xl border-b border-slate-700 bg-slate-900/95 p-3 shadow-lg shadow-slate-950/20 backdrop-blur"
+        onMouseDown={handleToolbarMouseDown}
+      >
         <button type="button" className={buttonClass(isBlock('p'))} onClick={() => exec('formatBlock', 'P')}>Paragraphe</button>
         <button type="button" className={buttonClass(isBlock('h1'))} onClick={() => exec('formatBlock', 'H1')}>H1</button>
         <button type="button" className={buttonClass(isBlock('h2'))} onClick={() => exec('formatBlock', 'H2')}>H2</button>
