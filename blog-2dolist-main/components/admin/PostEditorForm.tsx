@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AdminApiError, adminApi, uploadAdminImage } from '@/lib/admin/api-client';
 import { absoluteUrl, getArticlePath, type Locale } from '@/lib/i18n/routing';
@@ -529,7 +530,8 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
   const selectedCategory = categories.find((category) => category.id === post.categoryId || category.slug === post.categorySlug);
   const categorySelectValue = selectedCategory?.id || post.categoryId || post.categorySlug;
   const coverPreviewUrl = post.coverImageUrl || post.heroImageUrl;
-  const publicUrl = post.slug.trim() ? absoluteUrl(getArticlePath('fr', post.slug.trim())) : '';
+  const publicPath = post.slug.trim() ? getArticlePath(post.locale, post.slug.trim()) : '';
+  const publicUrl = publicPath ? absoluteUrl(publicPath) : '';
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -574,7 +576,17 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
           <p className="rounded border border-slate-700 p-2 text-sm text-slate-200">Français / fr</p>
         </div>
         <input className={fieldClass} placeholder="translationGroupId" value={post.translationGroupId} onChange={(e) => setPost({ ...post, translationGroupId: e.target.value })} />
-        {publicUrl ? <p className="rounded border border-slate-700 p-2 text-xs text-slate-300">URL publique : {publicUrl}</p> : null}
+        {publicUrl ? (
+          <div className="space-y-2 rounded border border-slate-700 p-2 text-xs text-slate-300">
+            <p>URL publique : {publicUrl}</p>
+            <Link
+              href={publicPath}
+              className="inline-flex rounded bg-slate-100 px-3 py-2 text-sm font-medium text-slate-950 transition hover:bg-white"
+            >
+              Voir l’activité sur le site
+            </Link>
+          </div>
+        ) : null}
         {post.translations.length > 0 ? (
           <div className="rounded border border-slate-700 p-3 text-xs text-slate-300">
             <p className="font-semibold text-slate-100">Traductions existantes</p>
