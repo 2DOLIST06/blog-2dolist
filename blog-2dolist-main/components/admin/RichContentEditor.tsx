@@ -345,6 +345,48 @@ export function RichContentEditor({
     );
   };
 
+  const editSelectedImageLink = () => {
+    saveSelection();
+    const image = getSelectedImage();
+    if (!image || !ref.current?.contains(image)) {
+      setUploadError('Cliquez d’abord sur une image dans le contenu pour lui associer un lien.');
+      return;
+    }
+
+    const currentLink = image.closest('a');
+    const currentUrl = currentLink?.getAttribute('href') ?? '';
+    const nextUrl = window.prompt('URL du lien de l’image (laissez vide pour retirer le lien)', currentUrl);
+    if (nextUrl === null) return;
+
+    const trimmedUrl = nextUrl.trim();
+    if (!trimmedUrl) {
+      if (currentLink) currentLink.replaceWith(image);
+      setUploadError('');
+      emit();
+      saveSelection();
+      refreshActiveFormats();
+      return;
+    }
+
+    if (currentLink) {
+      currentLink.setAttribute('href', trimmedUrl);
+      currentLink.setAttribute('target', '_blank');
+      currentLink.setAttribute('rel', 'noopener noreferrer');
+    } else {
+      const link = document.createElement('a');
+      link.setAttribute('href', trimmedUrl);
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
+      image.replaceWith(link);
+      link.appendChild(image);
+    }
+
+    setUploadError('');
+    emit();
+    saveSelection();
+    refreshActiveFormats();
+  };
+
   const editSelectedImageAlt = () => {
     saveSelection();
     const image = getSelectedImage();
@@ -603,6 +645,7 @@ export function RichContentEditor({
         <button type="button" className={buttonClass()} onClick={addImageByUrl}>Image URL</button>
         <button type="button" className={buttonClass()} onClick={() => { saveSelection(); fileInputRef.current?.click(); }}>Image fichier</button>
         <button type="button" className={buttonClass()} onClick={editSelectedImageAlt}>Alt image</button>
+        <button type="button" className={buttonClass(Boolean(selectedImage?.closest('a')))} onClick={editSelectedImageLink}>Lien image</button>
 
         <span className="mx-1 h-6 w-px bg-slate-700" />
 
@@ -674,7 +717,7 @@ export function RichContentEditor({
       />
       {selectedImage ? (
         <div className="border-t border-brand-900 bg-brand-950/80 px-3 py-2 text-xs text-brand-50">
-          Image sélectionnée : faites glisser son coin inférieur droit, ou utilisez la poignée ci-dessous, pour modifier sa taille dans l’article.
+          Image sélectionnée : faites glisser son coin inférieur droit, utilisez la poignée ci-dessous pour modifier sa taille, ou le bouton « Lien image » pour la rendre cliquable dans l’article.
           <button
             type="button"
             className="ml-3 cursor-se-resize rounded border border-brand-300 bg-brand-600 px-2 py-1 font-semibold text-white"
