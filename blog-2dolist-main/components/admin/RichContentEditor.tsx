@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface RichContentValue {
   type: 'doc';
@@ -47,6 +47,82 @@ const emptyFormats: ActiveFormats = {
   justifyRight: false,
   link: false
 };
+
+const MAX_EDITOR_IMAGE_WIDTH = 1600;
+const MAX_EDITOR_IMAGE_HEIGHT = 1600;
+const EDITOR_IMAGE_JPEG_QUALITY = 0.82;
+
+const getImageNaturalSize = (image: HTMLImageElement) => ({
+  width: image.naturalWidth || image.width || image.clientWidth || 0,
+  height: image.naturalHeight || image.height || image.clientHeight || 0
+});
+
+const formatBytes = (bytes: number) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 o';
+  const units = ['o', 'Ko', 'Mo'];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+};
+
+const resizeImageFile = (file: File) =>
+  new Promise<File>((resolve) => {
+    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml' || typeof window === 'undefined') {
+      resolve(file);
+      return;
+    }
+
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const ratio = Math.min(1, MAX_EDITOR_IMAGE_WIDTH / image.naturalWidth, MAX_EDITOR_IMAGE_HEIGHT / image.naturalHeight);
+      const nextWidth = Math.round(image.naturalWidth * ratio);
+      const nextHeight = Math.round(image.naturalHeight * ratio);
+
+      if (ratio >= 1 && file.size <= 1024 * 1024) {
+        resolve(file);
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = nextWidth;
+      canvas.height = nextHeight;
+      const context = canvas.getContext('2d');
+      if (!context) {
+        resolve(file);
+        return;
+      }
+
+      context.drawImage(image, 0, 0, nextWidth, nextHeight);
+      const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      canvas.toBlob(
+        (blob) => {
+          if (!blob || blob.size >= file.size) {
+            resolve(file);
+            return;
+          }
+          const extension = outputType === 'image/jpeg' ? 'jpg' : 'png';
+          const baseName = file.name.replace(/\.[^.]+$/, '') || 'image';
+          resolve(new File([blob], `${baseName}-optimisee.${extension}`, { type: outputType, lastModified: Date.now() }));
+        },
+        outputType,
+        EDITOR_IMAGE_JPEG_QUALITY
+      );
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+
+    image.src = objectUrl;
+  });
 
 const toolbarButton =
   'rounded-md border px-2.5 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-brand-500/50';
@@ -172,6 +248,8 @@ export function RichContentEditor({
   const [editingHtmlBlockId, setEditingHtmlBlockId] = useState<string | null>(null);
   const [htmlBlockError, setHtmlBlockError] = useState('');
   const [activeFormats, setActiveFormats] = useState<ActiveFormats>(emptyFormats);
+  const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
+  const [resizeHint, setResizeHint] = useState('');
 
   useEffect(() => {
     const nextHtml = valueToEditableHtml(value);
@@ -179,6 +257,10 @@ export function RichContentEditor({
   }, [value]);
 
   const emit = useCallback(() => onChange(serializeEditorValue(ref.current, value)), [onChange, value]);
+
+  const selectImage = useCallback((image: HTMLImageElement | null) => {
+    setSelectedImage(image && ref.current?.contains(image) ? image : null);
+  }, []);
 
   const saveSelection = useCallback(() => {
     const selection = document.getSelection();
@@ -202,8 +284,11 @@ export function RichContentEditor({
     const anchorNode = selection?.anchorNode ?? null;
     if (!anchorNode || !ref.current?.contains(anchorNode)) {
       setActiveFormats((current) => ({ ...current, block: current.block || 'p' }));
+      selectImage(null);
       return;
     }
+
+    selectImage(getSelectedImage());
 
     let block = 'p';
     const formatBlock = String(document.queryCommandValue('formatBlock') || '').toLowerCase();
@@ -223,7 +308,7 @@ export function RichContentEditor({
       justifyRight: document.queryCommandState('justifyRight'),
       link: selectionHasLink()
     });
-  }, []);
+  }, [selectImage]);
 
   useEffect(() => {
     document.addEventListener('selectionchange', refreshActiveFormats);
@@ -256,7 +341,7 @@ export function RichContentEditor({
     const safeAlt = escapeHtmlAttribute(alt.trim());
     exec(
       'insertHTML',
-      `<figure><img src="${safeUrl}" alt="${safeAlt}" /><figcaption>${safeAlt}</figcaption></figure><p><br></p>`
+      `<figure><img src="${safeUrl}" alt="${safeAlt}" style="width: 100%; height: auto;" /><figcaption>${safeAlt}</figcaption></figure><p><br></p>`
     );
   };
 
@@ -412,13 +497,67 @@ export function RichContentEditor({
     try {
       const alt = window.prompt('Texte alternatif de l’image', file.name);
       if (alt === null) return;
-      const uploaded = await onUploadImage(file);
+      const optimizedFile = await resizeImageFile(file);
+      if (optimizedFile.size < file.size) {
+        setResizeHint(`Image optimisée avant upload : ${formatBytes(file.size)} → ${formatBytes(optimizedFile.size)}.`);
+      } else {
+        setResizeHint('');
+      }
+      const uploaded = await onUploadImage(optimizedFile);
       insertImage(uploaded.url, alt || uploaded.alt || file.name);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Upload image impossible.');
     } finally {
       setUploading(false);
     }
+  };
+
+  const resizeImageFromPointer = (image: HTMLImageElement, startX: number) => {
+    const startWidth = image.getBoundingClientRect().width;
+    const { width: naturalWidth, height: naturalHeight } = getImageNaturalSize(image);
+    const aspectRatio = naturalWidth && naturalHeight ? naturalHeight / naturalWidth : image.getBoundingClientRect().height / startWidth || 1;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const editorWidth = ref.current?.clientWidth ?? startWidth;
+      const nextWidth = Math.max(80, Math.min(editorWidth, startWidth + moveEvent.clientX - startX));
+      const nextHeight = Math.round(nextWidth * aspectRatio);
+      image.style.width = `${Math.round(nextWidth)}px`;
+      image.style.height = 'auto';
+      image.setAttribute('width', String(Math.round(nextWidth)));
+      image.setAttribute('height', String(nextHeight));
+      setResizeHint(`Affichage image : ${Math.round(nextWidth)} × ${nextHeight} px. Le fichier uploadé est optimisé automatiquement.`);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      emit();
+      saveSelection();
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const startSelectedImageResize = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!selectedImage) return;
+    resizeImageFromPointer(selectedImage, event.clientX);
+  };
+
+  const startImageCornerResize = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLImageElement)) return;
+
+    const rect = target.getBoundingClientRect();
+    const isBottomRightCorner = event.clientX >= rect.right - 24 && event.clientY >= rect.bottom - 24;
+    if (!isBottomRightCorner) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    selectImage(target);
+    resizeImageFromPointer(target, event.clientX);
   };
 
   const buttonClass = (active = false) => `${toolbarButton} ${active ? activeButton : inactiveButton}`;
@@ -514,8 +653,9 @@ export function RichContentEditor({
         ref={ref}
         contentEditable
         suppressContentEditableWarning
-        className="min-h-[520px] w-full bg-white p-8 text-base leading-8 text-slate-900 outline-none [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_figcaption]:mt-2 [&_figcaption]:text-center [&_figcaption]:text-sm [&_figcaption]:text-slate-500 [&_figure]:my-6 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:text-xl [&_h3]:font-semibold [&_h4]:text-lg [&_h4]:font-semibold [&_[data-admin-html-block='html']]:my-6 [&_[data-admin-html-block='html']]:rounded-xl [&_[data-admin-html-block='html']]:border [&_[data-admin-html-block='html']]:border-dashed [&_[data-admin-html-block='html']]:border-amber-400 [&_[data-admin-html-block='html']]:bg-amber-50 [&_[data-admin-html-block='html']]:p-4 [&_img]:max-w-full [&_img]:rounded-xl [&_ol]:list-decimal [&_ol]:pl-6 [&_pre]:rounded-lg [&_pre]:bg-slate-100 [&_pre]:p-4 [&_ul]:list-disc [&_ul]:pl-6"
+        className="min-h-[520px] w-full bg-white p-8 text-base leading-8 text-slate-900 outline-none [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_figcaption]:mt-2 [&_figcaption]:text-center [&_figcaption]:text-sm [&_figcaption]:text-slate-500 [&_figure]:my-6 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:text-xl [&_h3]:font-semibold [&_h4]:text-lg [&_h4]:font-semibold [&_[data-admin-html-block='html']]:my-6 [&_[data-admin-html-block='html']]:rounded-xl [&_[data-admin-html-block='html']]:border [&_[data-admin-html-block='html']]:border-dashed [&_[data-admin-html-block='html']]:border-amber-400 [&_[data-admin-html-block='html']]:bg-amber-50 [&_[data-admin-html-block='html']]:p-4 [&_img]:h-auto [&_img]:max-w-full [&_img]:cursor-se-resize [&_img]:rounded-xl [&_img]:outline-offset-4 [&_img]:focus:outline [&_img]:focus:outline-2 [&_img]:focus:outline-brand-500 [&_ol]:list-decimal [&_ol]:pl-6 [&_pre]:rounded-lg [&_pre]:bg-slate-100 [&_pre]:p-4 [&_ul]:list-disc [&_ul]:pl-6"
         onBlur={saveSelection}
+        onMouseDown={startImageCornerResize}
         onInput={() => {
           emit();
           saveSelection();
@@ -525,11 +665,26 @@ export function RichContentEditor({
           saveSelection();
           refreshActiveFormats();
         }}
-        onMouseUp={() => {
+        onMouseUp={(event) => {
+          const target = event.target;
+          selectImage(target instanceof HTMLImageElement ? target : null);
           saveSelection();
           refreshActiveFormats();
         }}
       />
+      {selectedImage ? (
+        <div className="border-t border-brand-900 bg-brand-950/80 px-3 py-2 text-xs text-brand-50">
+          Image sélectionnée : faites glisser son coin inférieur droit, ou utilisez la poignée ci-dessous, pour modifier sa taille dans l’article.
+          <button
+            type="button"
+            className="ml-3 cursor-se-resize rounded border border-brand-300 bg-brand-600 px-2 py-1 font-semibold text-white"
+            onMouseDown={startSelectedImageResize}
+          >
+            ↘ Redimensionner
+          </button>
+        </div>
+      ) : null}
+      {resizeHint ? <p className="border-t border-emerald-900 bg-emerald-950/70 px-3 py-2 text-xs text-emerald-100">{resizeHint}</p> : null}
       {uploadError ? <p className="border-t border-red-900 bg-red-950/70 px-3 py-2 text-xs text-red-100">{uploadError}</p> : null}
       <div className="flex items-center justify-between gap-3 border-t border-slate-700 bg-slate-900/70 p-2 text-xs text-slate-300">
         <span>{uploading ? 'Upload image en cours…' : `${contentHtml.length} caractères HTML`}</span>
