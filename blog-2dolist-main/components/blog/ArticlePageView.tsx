@@ -19,6 +19,7 @@ interface ArticlePageViewProps {
   author?: Author;
   category?: Category;
   relatedPosts: RelatedPostSummary[];
+  canEdit?: boolean;
 }
 
 const labelsByLocale = {
@@ -28,11 +29,12 @@ const labelsByLocale = {
     reading: 'min de lecture',
     related: 'Articles liés',
     fallbackCategory: 'Catégorie',
-    fallbackAuthor: 'Équipe éditoriale'
+    fallbackAuthor: 'Équipe éditoriale',
+    editArticle: 'Modifier cet article'
   }
 } satisfies Record<'fr', Record<string, string>>;
 
-export function ArticlePageView({ post, author, category, relatedPosts }: ArticlePageViewProps) {
+export function ArticlePageView({ post, author, category, relatedPosts, canEdit = false }: ArticlePageViewProps) {
   const labels = labelsByLocale.fr;
   const articleHeadings = extractHeadingsFromHtml(post.contentHtml);
   const articlePath = getPostHref(post, post.locale);
@@ -64,7 +66,17 @@ export function ArticlePageView({ post, author, category, relatedPosts }: Articl
         <Breadcrumbs items={[{ label: labels.home, href: getHomePath(post.locale) }, { label: labels.articles, href: getArticlesPath(post.locale) }, { label: post.title, href: articlePath }]} />
 
 
-        <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-slate-900">{post.title}</h1>
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-slate-900">{post.title}</h1>
+          {canEdit ? (
+            <Link
+              href={`/admin/posts/${post.id}/edit`}
+              className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+            >
+              {labels.editArticle}
+            </Link>
+          ) : null}
+        </div>
         <p className="mt-4 max-w-3xl text-lg text-slate-600">{post.description}</p>
 
         <div className="mt-5 text-sm text-slate-500">
