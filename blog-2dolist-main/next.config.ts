@@ -30,11 +30,6 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '**.cloudfront.net'
       },
-      {
-        protocol: 'https',
-        hostname: 'blog.2dolist.fr',
-        pathname: '/wp-content/uploads/**'
-      },
       ...configuredImageHosts.map((hostname) => ({
         protocol: 'https' as const,
         hostname

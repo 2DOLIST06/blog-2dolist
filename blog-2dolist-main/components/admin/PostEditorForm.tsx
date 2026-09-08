@@ -17,6 +17,7 @@ type TranslationSummary = { id?: string; locale: Locale; slug: string; path: str
 type PostModel = {
   id?: string;
   slug: string;
+  path: string;
   title: string;
   h1: string;
   chapoHtml: string;
@@ -65,6 +66,7 @@ type CategoryOption = {
 
 const empty: PostModel = {
   slug: '',
+  path: '',
   title: '',
   h1: '',
   chapoHtml: '',
@@ -109,6 +111,7 @@ type PostTranslationExport = {
 
 const exportablePostFields = [
   'slug',
+  'path',
   'title',
   'h1',
   'chapoHtml',
@@ -181,7 +184,8 @@ const normalizeImportedPost = (payload: unknown): Partial<PostModel> => {
   return next;
 };
 
-const getPostPath = (locale: Locale, slug: string) => (slug.trim() ? getArticlePath(locale, slug.trim()) : '');
+const getPostPath = (post: Pick<PostModel, 'path' | 'locale' | 'slug'>) =>
+  post.path.trim() || (post.slug.trim() ? getArticlePath(post.locale, post.slug.trim()) : '');
 
 const summarizeCurrentPost = (post: PostModel): TranslationSummary | undefined => {
   if (!post.id || !post.slug.trim()) return undefined;
@@ -189,8 +193,8 @@ const summarizeCurrentPost = (post: PostModel): TranslationSummary | undefined =
     id: post.id,
     locale: post.locale,
     slug: post.slug.trim(),
-    path: getPostPath(post.locale, post.slug),
-    canonicalUrl: post.canonicalUrl || absoluteUrl(getPostPath(post.locale, post.slug))
+    path: getPostPath(post),
+    canonicalUrl: post.canonicalUrl || absoluteUrl(getPostPath(post))
   };
 };
 
@@ -431,6 +435,7 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
       setError('');
       const normalizedTitle = post.title.trim();
       const normalizedSlug = post.slug.trim();
+      const normalizedPath = getPostPath(post);
       const normalizedContent = (post.contentJson.html || post.contentHtml || '').trim();
       const normalizedAuthorId = post.authorId.trim();
       const selectedCategory = categories.find((category) => category.id === post.categoryId || category.slug === post.categorySlug);
@@ -455,6 +460,7 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
       const publishing = post.status === 'PUBLISHED';
       const payload = {
         slug: normalizedSlug || undefined,
+        path: normalizedPath || undefined,
         title: normalizedTitle,
         locale: post.locale,
         translationGroupId: post.translationGroupId || null,
@@ -487,6 +493,7 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
         const savedPost: PostModel = {
           ...post,
           slug: normalizedSlug,
+          path: normalizedPath,
           title: normalizedTitle,
           h1: post.h1 || normalizedTitle,
           chapoHtml: post.chapoHtml,
@@ -530,7 +537,7 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
   const selectedCategory = categories.find((category) => category.id === post.categoryId || category.slug === post.categorySlug);
   const categorySelectValue = selectedCategory?.id || post.categoryId || post.categorySlug;
   const coverPreviewUrl = post.coverImageUrl || post.heroImageUrl;
-  const publicPath = post.slug.trim() ? getArticlePath(post.locale, post.slug.trim()) : '';
+  const publicPath = getPostPath(post);
   const publicUrl = publicPath ? absoluteUrl(publicPath) : '';
 
   return (
@@ -571,6 +578,12 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
 
       <aside className="space-y-3">
         <input className={fieldClass} placeholder="slug" value={post.slug} onChange={(e) => setPost({ ...post, slug: e.target.value })} />
+        <input
+          className={fieldClass}
+          placeholder="path WordPress (ex. /2024/03/26/mon-article/)"
+          value={post.path}
+          onChange={(e) => setPost({ ...post, path: e.target.value })}
+        />
         <div className="space-y-2">
           <p className={labelClass}>Langue</p>
           <p className="rounded border border-slate-700 p-2 text-sm text-slate-200">Français / fr</p>
@@ -587,61 +600,6 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
             </Link>
           </div>
         ) : null}
-        {post.translations.length > 0 ? (
-          <div className="rounded border border-slate-700 p-3 text-xs text-slate-300">
-            <p className="font-semibold text-slate-100">Traductions existantes</p>
-            <ul className="mt-2 space-y-1">
-              {post.translations.map((translation) => (
-                <li key={`${translation.locale}-${translation.slug}`}>
-                  {translation.locale} · {translation.id ? `${translation.id} · ` : ''}{translation.path}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        {translationNotice ? <p className="rounded border border-amber-600 bg-amber-950/40 p-2 text-sm text-amber-100">{translationNotice}</p> : null}
-        <section className="space-y-2 rounded border border-slate-700 p-3">
-          <p className={labelClass}>Export / import traduction</p>
-          <p className="text-xs text-slate-400">
-            Exportez tous les champs traduisibles du formulaire (slug, H1, contenu HTML, FAQ, SEO, tags, alt des images, JSON-LD), faites traduire le JSON, puis importez-le ici.
-          </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <button type="button" className={secondaryButtonClass} onClick={refreshTranslationExport}>Générer</button>
-            <button type="button" className={secondaryButtonClass} onClick={copyTranslationExport}>Copier</button>
-            <button type="button" className={secondaryButtonClass} onClick={downloadTranslationExport}>Télécharger</button>
-          </div>
-          <textarea
-            className={`${fieldClass} min-h-40 font-mono text-xs`}
-            placeholder="Export JSON à envoyer à ChatGPT"
-            value={translationExport}
-            onChange={(e) => setTranslationExport(e.target.value)}
-          />
-          <textarea
-            className={`${fieldClass} min-h-40 font-mono text-xs`}
-            placeholder="Collez ici le JSON traduit renvoyé par ChatGPT"
-            value={translationImport}
-            onChange={(e) => setTranslationImport(e.target.value)}
-          />
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={secondaryButtonClass} onClick={() => applyTranslationImport()} disabled={!translationImport.trim()}>Importer le JSON collé</button>
-            <button type="button" className={secondaryButtonClass} onClick={() => importFileRef.current?.click()}>Importer un fichier</button>
-            <input
-              ref={importFileRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                e.currentTarget.value = '';
-                if (!file) return;
-                const value = await file.text();
-                setTranslationImport(value);
-                applyTranslationImport(value);
-              }}
-            />
-          </div>
-          {translationToolNotice ? <p className="text-xs text-emerald-300">{translationToolNotice}</p> : null}
-        </section>
         <label className={labelClass} htmlFor="post-author">
           Auteur
         </label>
