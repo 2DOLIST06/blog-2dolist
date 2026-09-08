@@ -1,5 +1,5 @@
 export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME?.trim() || 'Blog';
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || 'https://example.com').replace(/\/$/, '');
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || 'https://blog.2dolist.fr').replace(/\/$/, '');
 export const DEFAULT_LOCALE = 'fr' as const;
 export const SUPPORTED_LOCALES = ['fr'] as const;
 export const DEFAULT_OG_IMAGE = process.env.NEXT_PUBLIC_DEFAULT_OG_IMAGE?.trim() || '/og-default.svg';
