@@ -470,14 +470,14 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
     setJsonModalOpen(true);
   };
 
-  const validateImport = (raw = jsonValue) => {
+  const validateImport = (raw = jsonValue): ValidatedImport => {
     try {
       const result = validateArticleJson(JSON.parse(raw), categories, authors);
       setJsonValidation(result);
       setJsonNotice(result.errors.length ? '' : 'JSON valide. Vous pouvez maintenant l’appliquer.');
       return result;
     } catch {
-      const result = { errors: ['JSON invalide : vérifiez la syntaxe.'], warnings: [] };
+      const result: ValidatedImport = { errors: ['JSON invalide : vérifiez la syntaxe.'], warnings: [] };
       setJsonValidation(result);
       setJsonNotice('');
       return result;
