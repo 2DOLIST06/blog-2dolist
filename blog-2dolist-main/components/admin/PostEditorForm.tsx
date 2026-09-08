@@ -19,6 +19,8 @@ type PostModel = {
   slug: string;
   path: string;
   title: string;
+  oldUrl: string;
+  excerpt: string;
   h1: string;
   chapoHtml: string;
   contentHtml: string;
@@ -40,12 +42,15 @@ type PostModel = {
   jsonLd: string;
   status: 'DRAFT' | 'PUBLISHED';
   authorId: string;
+  publishedAt: string;
+  updatedAt: string;
   locale: Locale;
   translationGroupId: string;
   translations: TranslationSummary[];
 };
 
 type InitialPost = Partial<Omit<PostModel, 'status'>> & {
+  old_url?: string | null;
   status?: 'DRAFT' | 'PUBLISHED' | 'draft' | 'published';
   author?: { id?: string | null } | null;
   translations?: Array<{ id?: string | null; locale?: Locale | null; slug?: string | null; path?: string | null; canonicalUrl?: string | null }> | null;
@@ -56,6 +61,7 @@ type InitialPost = Partial<Omit<PostModel, 'status'>> & {
 type AuthorOption = {
   id: string;
   name: string;
+  slug: string;
 };
 
 type CategoryOption = {
@@ -68,6 +74,8 @@ const empty: PostModel = {
   slug: '',
   path: '',
   title: '',
+  oldUrl: '',
+  excerpt: '',
   h1: '',
   chapoHtml: '',
   contentHtml: '',
@@ -89,6 +97,8 @@ const empty: PostModel = {
   jsonLd: '',
   status: 'DRAFT',
   authorId: '',
+  publishedAt: '',
+  updatedAt: '',
   locale: 'fr',
   translationGroupId: '',
   translations: []
@@ -101,42 +111,37 @@ const checkboxClass = 'h-4 w-4 rounded border-slate-500 bg-white text-brand-700 
 const secondaryButtonClass =
   'rounded border border-slate-600 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60';
 
-type PostTranslationExport = {
-  schema: 'blog.post-translation';
-  version: 1;
-  exportedAt: string;
-  instructions: string;
-  post: Omit<PostModel, 'id' | 'translations'>;
+type ArticleJson = {
+  old_url?: string;
+  path: string;
+  slug: string;
+  locale: 'fr';
+  status?: 'DRAFT' | 'PUBLISHED';
+  isActive?: boolean;
+  isIndexable?: boolean;
+  title: string;
+  h1: string;
+  excerpt: string;
+  chapoHtml: string;
+  contentHtml: string;
+  contentJson: RichContentValue;
+  faqJson: FaqItem[];
+  metaTitle: string;
+  metaDescription: string;
+  canonicalUrl: string;
+  robots: string;
+  publishedAt: string;
+  updatedAt: string;
+  categoryName: string;
+  categorySlug: string;
+  authorName: string;
+  authorSlug: string;
+  coverImageUrl: string;
+  coverImageAlt: string;
+  tags: string[];
 };
 
-const exportablePostFields = [
-  'slug',
-  'path',
-  'title',
-  'h1',
-  'chapoHtml',
-  'contentHtml',
-  'contentJson',
-  'faqJson',
-  'coverImageId',
-  'coverImageUrl',
-  'heroImageUrl',
-  'heroImageAlt',
-  'metaTitle',
-  'metaDescription',
-  'canonicalUrl',
-  'robots',
-  'isActive',
-  'isIndexable',
-  'categoryId',
-  'categorySlug',
-  'tagsJson',
-  'jsonLd',
-  'status',
-  'authorId',
-  'locale',
-  'translationGroupId'
-] as const satisfies readonly (keyof Omit<PostModel, 'id' | 'translations'>)[];
+type ValidatedImport = { article?: ArticleJson; errors: string[]; warnings: string[] };
 
 type SavePostResponse = {
   data?: {
@@ -149,39 +154,75 @@ type SavePostResponse = {
 
 const serializePost = (value: PostModel) => JSON.stringify(value);
 
-const buildTranslationExport = (post: PostModel): PostTranslationExport => {
-  const exportedPost = Object.fromEntries(exportablePostFields.map((field) => [field, post[field]])) as Omit<PostModel, 'id' | 'translations'>;
-
-  return {
-    schema: 'blog.post-translation',
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    instructions:
-      'Traduire uniquement les valeurs textuelles (slug, title, h1, chapoHtml, contentJson.html, faqJson, heroImageAlt, metaTitle, metaDescription, tagsJson, jsonLd, attributs alt/figcaption dans le HTML). Conserver la structure JSON, les clés, les IDs techniques, les URLs des images, les balises HTML et les booléens.',
-    post: exportedPost
-  };
-};
-
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+const stringValue = (value: unknown) => (typeof value === 'string' ? value : '');
 
-const normalizeImportedPost = (payload: unknown): Partial<PostModel> => {
-  const rawPost = isRecord(payload) && isRecord(payload.post) ? payload.post : payload;
-  if (!isRecord(rawPost)) throw new Error('Le JSON doit contenir un objet post ou un objet article à la racine.');
+const contentBlocksToHtml = (value: Record<string, unknown>) =>
+  Array.isArray(value.blocks)
+    ? value.blocks.map((block) => (isRecord(block) && typeof block.html === 'string' ? block.html : '')).join('')
+    : '';
 
-  const next: Partial<PostModel> = {};
-  for (const field of exportablePostFields) {
-    if (field in rawPost) (next as Record<string, unknown>)[field] = rawPost[field];
+const validateArticleJson = (payload: unknown, categories: CategoryOption[], authors: AuthorOption[]): ValidatedImport => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  if (!isRecord(payload)) return { errors: ['Le JSON doit contenir un objet article à la racine.'], warnings };
+
+  const path = stringValue(payload.path);
+  const slug = stringValue(payload.slug);
+  const title = stringValue(payload.title);
+  if (!path) errors.push('path est obligatoire.');
+  else if (!path.startsWith('/')) errors.push('path doit commencer par /.');
+  else if (path === '/fr' || path.startsWith('/fr/')) errors.push('path ne doit jamais commencer par /fr.');
+  if (!slug) errors.push('slug est obligatoire.');
+  if (!title) errors.push('title est obligatoire.');
+  if (payload.locale !== undefined && payload.locale !== 'fr') errors.push('locale doit être absente ou égale à "fr".');
+  if (!stringValue(payload.contentHtml) && !isRecord(payload.contentJson)) errors.push('contentHtml ou contentJson est obligatoire.');
+  if (payload.contentJson !== undefined && !isRecord(payload.contentJson)) errors.push('contentJson doit être un objet.');
+  if (payload.status !== undefined && payload.status !== 'DRAFT' && payload.status !== 'PUBLISHED') errors.push('status doit être DRAFT ou PUBLISHED.');
+  if (payload.tags !== undefined && (!Array.isArray(payload.tags) || payload.tags.some((tag) => typeof tag !== 'string'))) errors.push('tags doit être un tableau de chaînes.');
+  if (payload.faqJson !== undefined && (!Array.isArray(payload.faqJson) || payload.faqJson.some((faq) => !isRecord(faq) || typeof faq.question !== 'string' || typeof faq.answer !== 'string'))) {
+    errors.push('faqJson doit être un tableau d’objets question/answer.');
   }
-
-  if (next.locale !== undefined && next.locale !== 'fr' && next.locale !== 'en') throw new Error('La locale importée doit être "fr" ou "en".');
-  if (next.status !== undefined && next.status !== 'DRAFT' && next.status !== 'PUBLISHED') throw new Error('Le status importé doit être "DRAFT" ou "PUBLISHED".');
-  if (next.contentJson !== undefined && (!isRecord(next.contentJson) || next.contentJson.type !== 'doc' || typeof next.contentJson.html !== 'string')) {
-    throw new Error('contentJson importé doit respecter le format { type: "doc", html: "..." }.');
+  const canonicalUrl = stringValue(payload.canonicalUrl);
+  if (canonicalUrl) {
+    try {
+      if (new URL(canonicalUrl).pathname !== path) errors.push('canonicalUrl doit utiliser exactement le path de l’article.');
+    } catch {
+      errors.push('canonicalUrl doit être une URL absolue valide.');
+    }
   }
-  if (next.faqJson !== undefined && !Array.isArray(next.faqJson)) throw new Error('faqJson importé doit être un tableau.');
-  if (next.tagsJson !== undefined && !Array.isArray(next.tagsJson)) throw new Error('tagsJson importé doit être un tableau.');
+  const categorySlug = stringValue(payload.categorySlug);
+  const authorSlug = stringValue(payload.authorSlug);
+  if (categorySlug && !categories.some((category) => category.slug === categorySlug)) warnings.push(`La catégorie « ${categorySlug} » n’existe pas dans les options. Créez-la dans l’admin avant la sauvegarde.`);
+  if (authorSlug && !authors.some((author) => author.slug === authorSlug)) warnings.push(`L’auteur « ${authorSlug} » n’existe pas dans les options. Créez-le dans l’admin avant la sauvegarde.`);
+  if (errors.length) return { errors, warnings };
 
-  return next;
+  const importedContent = isRecord(payload.contentJson) ? payload.contentJson : {};
+  const contentHtml = stringValue(payload.contentHtml) || stringValue(importedContent.html) || contentBlocksToHtml(importedContent);
+  const contentJson = { ...importedContent, type: 'doc' as const, html: contentHtml } as RichContentValue;
+  return {
+    errors,
+    warnings,
+    article: {
+      old_url: stringValue(payload.old_url) || undefined,
+      path,
+      slug,
+      locale: 'fr',
+      status: payload.status === 'PUBLISHED' || payload.status === 'DRAFT' ? payload.status : undefined,
+      isActive: typeof payload.isActive === 'boolean' ? payload.isActive : undefined,
+      isIndexable: typeof payload.isIndexable === 'boolean' ? payload.isIndexable : undefined,
+      title,
+      h1: stringValue(payload.h1), excerpt: stringValue(payload.excerpt), chapoHtml: stringValue(payload.chapoHtml),
+      contentHtml, contentJson,
+      faqJson: (payload.faqJson as FaqItem[] | undefined) ?? [],
+      metaTitle: stringValue(payload.metaTitle), metaDescription: stringValue(payload.metaDescription), canonicalUrl,
+      robots: stringValue(payload.robots) || 'index,follow', publishedAt: stringValue(payload.publishedAt), updatedAt: stringValue(payload.updatedAt),
+      categoryName: stringValue(payload.categoryName), categorySlug,
+      authorName: stringValue(payload.authorName), authorSlug,
+      coverImageUrl: stringValue(payload.coverImageUrl), coverImageAlt: stringValue(payload.coverImageAlt),
+      tags: (payload.tags as string[] | undefined) ?? []
+    }
+  };
 };
 
 const getPostPath = (post: Pick<PostModel, 'path' | 'locale' | 'slug'>) =>
@@ -213,6 +254,7 @@ const normalizeInitialPost = (initialPost?: InitialPost): PostModel => {
   return {
     ...empty,
     ...(initialPost ?? {}),
+    oldUrl: initialPost?.oldUrl || initialPost?.old_url || '',
     status,
     authorId: initialPost?.authorId || initialPost?.author?.id || '',
     categoryId: initialPost?.categoryId || initialPost?.category?.id || '',
@@ -244,9 +286,10 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
   const [coverUploading, setCoverUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [translationNotice, setTranslationNotice] = useState('');
-  const [translationExport, setTranslationExport] = useState('');
-  const [translationImport, setTranslationImport] = useState('');
-  const [translationToolNotice, setTranslationToolNotice] = useState('');
+  const [jsonModalOpen, setJsonModalOpen] = useState(false);
+  const [jsonValue, setJsonValue] = useState('');
+  const [jsonValidation, setJsonValidation] = useState<ValidatedImport>({ errors: [], warnings: [] });
+  const [jsonNotice, setJsonNotice] = useState('');
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const [savedSnapshot, setSavedSnapshot] = useState(() => serializePost(normalizeInitialPost(initialPost)));
   const router = useRouter();
@@ -293,10 +336,10 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
       const response = await fetch('/admin-api/content/options', { cache: 'no-store' });
       if (!response.ok) return;
       const payload = (await response.json().catch(() => ({}))) as {
-        authors?: Array<{ id?: string; name?: string }>;
+        authors?: Array<{ id?: string; name?: string; slug?: string }>;
         categories?: Array<{ id?: string; slug?: string; title?: string; name?: string }>;
       };
-      const normalizedAuthors = payload.authors?.map((author) => ({ id: author.id ?? '', name: author.name ?? '' })).filter((author) => author.id && author.name) ?? [];
+      const normalizedAuthors = payload.authors?.map((author) => ({ id: author.id ?? '', name: author.name ?? '', slug: author.slug ?? '' })).filter((author) => author.id && author.name) ?? [];
       const normalizedCategories =
         payload.categories
           ?.map((category) => ({
@@ -379,54 +422,96 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
     setTranslationNotice(`La version ${targetLocale.toUpperCase()} n’existe pas encore. Elle sera créée à la première sauvegarde.`);
   };
 
-  const refreshTranslationExport = () => {
-    setTranslationExport(JSON.stringify(buildTranslationExport(post), null, 2));
-    setTranslationToolNotice('Export généré. Vous pouvez le copier dans ChatGPT ou le télécharger.');
+  const buildArticleExport = (): ArticleJson => {
+    const category = categories.find((item) => item.id === post.categoryId || item.slug === post.categorySlug);
+    const author = authors.find((item) => item.id === post.authorId);
+    return {
+      ...(post.oldUrl ? { old_url: post.oldUrl } : {}),
+      path: post.path,
+      slug: post.slug,
+      locale: 'fr',
+      status: post.status,
+      isActive: post.isActive,
+      isIndexable: post.isIndexable,
+      title: post.title,
+      h1: post.h1,
+      excerpt: post.excerpt,
+      chapoHtml: post.chapoHtml,
+      contentHtml: post.contentHtml,
+      contentJson: post.contentJson,
+      faqJson: post.faqJson,
+      metaTitle: post.metaTitle,
+      metaDescription: post.metaDescription,
+      canonicalUrl: post.canonicalUrl,
+      robots: post.robots,
+      publishedAt: post.publishedAt,
+      updatedAt: post.updatedAt,
+      categoryName: category?.label ?? '',
+      categorySlug: category?.slug ?? post.categorySlug,
+      authorName: author?.name ?? '',
+      authorSlug: author?.slug ?? '',
+      coverImageUrl: post.coverImageUrl || post.heroImageUrl,
+      coverImageAlt: post.heroImageAlt,
+      tags: post.tagsJson
+    };
   };
 
-  const copyTranslationExport = async () => {
-    const value = translationExport || JSON.stringify(buildTranslationExport(post), null, 2);
-    setTranslationExport(value);
-    await navigator.clipboard.writeText(value);
-    setTranslationToolNotice('Export copié dans le presse-papiers.');
+  const openExport = () => {
+    setJsonValue(JSON.stringify(buildArticleExport(), null, 2));
+    setJsonValidation({ errors: [], warnings: [] });
+    setJsonNotice('Export généré depuis les valeurs actuelles du formulaire.');
+    setJsonModalOpen(true);
   };
 
-  const downloadTranslationExport = () => {
-    const value = translationExport || JSON.stringify(buildTranslationExport(post), null, 2);
-    setTranslationExport(value);
-    const blob = new Blob([value], { type: 'application/json;charset=utf-8' });
+  const openImport = () => {
+    setJsonValue('');
+    setJsonValidation({ errors: [], warnings: [] });
+    setJsonNotice('');
+    setJsonModalOpen(true);
+  };
+
+  const validateImport = (raw = jsonValue): ValidatedImport => {
+    try {
+      const result = validateArticleJson(JSON.parse(raw), categories, authors);
+      setJsonValidation(result);
+      setJsonNotice(result.errors.length ? '' : 'JSON valide. Vous pouvez maintenant l’appliquer.');
+      return result;
+    } catch {
+      const result: ValidatedImport = { errors: ['JSON invalide : vérifiez la syntaxe.'], warnings: [] };
+      setJsonValidation(result);
+      setJsonNotice('');
+      return result;
+    }
+  };
+
+  const applyArticleImport = () => {
+    const result = validateImport();
+    if (!result.article || result.errors.length) return;
+    const article = result.article;
+    const category = categories.find((item) => item.slug === article.categorySlug);
+    const author = authors.find((item) => item.slug === article.authorSlug);
+    setPost((current) => ({
+      ...current,
+      oldUrl: article.old_url ?? '', path: article.path, slug: article.slug, locale: 'fr', status: article.status ?? current.status,
+      isActive: article.isActive ?? current.isActive, isIndexable: article.isIndexable ?? current.isIndexable, title: article.title, h1: article.h1,
+      excerpt: article.excerpt, chapoHtml: article.chapoHtml, contentHtml: article.contentHtml, contentJson: article.contentJson,
+      faqJson: article.faqJson, metaTitle: article.metaTitle, metaDescription: article.metaDescription,
+      canonicalUrl: article.canonicalUrl, robots: article.robots, publishedAt: article.publishedAt, updatedAt: article.updatedAt,
+      categoryId: category?.id ?? '', categorySlug: article.categorySlug,
+      authorId: author?.id ?? '', coverImageUrl: article.coverImageUrl, heroImageUrl: article.coverImageUrl,
+      heroImageAlt: article.coverImageAlt, tagsJson: article.tags
+    }));
+    setJsonNotice('Import appliqué sans sauvegarde. Relisez le formulaire puis cliquez sur Enregistrer.');
+  };
+
+  const downloadJson = () => {
+    const blob = new Blob([jsonValue], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `article-${post.locale}-${post.slug || 'sans-slug'}-traduction.json`;
+    link.download = `article-${post.slug || 'sans-slug'}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    setTranslationToolNotice('Fichier export téléchargé.');
-  };
-
-  const applyTranslationImport = (rawValue = translationImport) => {
-    try {
-      const importedFields = normalizeImportedPost(JSON.parse(rawValue));
-      const nextPost: PostModel = {
-        ...post,
-        ...importedFields,
-        id: post.id,
-        translations: post.translations,
-        contentHtml: importedFields.contentJson?.html ?? importedFields.contentHtml ?? post.contentHtml,
-        contentJson: importedFields.contentJson ?? { type: 'doc', html: importedFields.contentHtml ?? post.contentJson.html },
-        faqJson: importedFields.faqJson ?? post.faqJson,
-        tagsJson: importedFields.tagsJson ?? post.tagsJson,
-        coverImageUrl: importedFields.coverImageUrl || importedFields.heroImageUrl || post.coverImageUrl,
-        status: importedFields.status ?? post.status,
-        locale: importedFields.locale ?? post.locale
-      };
-      setPost(nextPost);
-      setTranslationToolNotice('Import appliqué au formulaire. Vérifiez puis cliquez sur Enregistrer.');
-      setError('');
-    } catch (e) {
-      setTranslationToolNotice('');
-      setError(e instanceof Error ? e.message : 'Import JSON invalide.');
-    }
   };
 
   const save = async () => {
@@ -462,6 +547,8 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
         slug: normalizedSlug || undefined,
         path: normalizedPath || undefined,
         title: normalizedTitle,
+        old_url: post.oldUrl || null,
+        excerpt: post.excerpt || null,
         locale: post.locale,
         translationGroupId: post.translationGroupId || null,
         contentMarkdown: normalizedContent,
@@ -485,7 +572,7 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
         tagsJson: post.tagsJson,
         jsonLd: parsedJsonLd,
         status: post.status,
-        publishedAt: publishing ? new Date().toISOString() : null
+        publishedAt: publishing ? post.publishedAt || new Date().toISOString() : null
       };
 
       if (post.id) {
@@ -541,10 +628,39 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
   const publicUrl = publicPath ? absoluteUrl(publicPath) : '';
 
   return (
+    <>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button type="button" className={secondaryButtonClass} onClick={openImport}>Importer JSON</button>
+        <button type="button" className={secondaryButtonClass} onClick={openExport}>Exporter JSON</button>
+      </div>
+      {jsonModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="article-json-title">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg border border-slate-600 bg-slate-900 p-5 shadow-2xl">
+            <div className="flex items-center justify-between gap-4">
+              <h2 id="article-json-title" className="text-xl font-semibold">Import / export JSON article</h2>
+              <button type="button" className={secondaryButtonClass} onClick={() => setJsonModalOpen(false)}>Fermer</button>
+            </div>
+            <p className="mt-2 text-sm text-slate-300">Le HTML est traité comme du texte et n’est jamais exécuté pendant l’import.</p>
+            <textarea className={`${fieldClass} mt-4 min-h-80 font-mono text-xs`} value={jsonValue} onChange={(event) => { setJsonValue(event.target.value); setJsonValidation({ errors: [], warnings: [] }); setJsonNotice(''); }} spellCheck={false} />
+            {jsonValidation.errors.length ? <ul className="mt-3 list-disc pl-5 text-sm text-red-400">{jsonValidation.errors.map((item) => <li key={item}>{item}</li>)}</ul> : null}
+            {jsonValidation.warnings.length ? <ul className="mt-3 list-disc pl-5 text-sm text-amber-400">{jsonValidation.warnings.map((item) => <li key={item}>{item}</li>)}</ul> : null}
+            {jsonNotice ? <p className="mt-3 text-sm text-emerald-300">{jsonNotice}</p> : null}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" className={secondaryButtonClass} onClick={() => validateImport()}>Valider</button>
+              <button type="button" className="rounded bg-brand-700 px-3 py-2 text-sm text-white" onClick={applyArticleImport}>Appliquer</button>
+              <button type="button" className={secondaryButtonClass} onClick={() => void navigator.clipboard.writeText(jsonValue)}>Copier</button>
+              <button type="button" className={secondaryButtonClass} onClick={downloadJson}>Télécharger .json</button>
+              <input ref={importFileRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void file.text().then(setJsonValue); event.currentTarget.value = ''; }} />
+              <button type="button" className={secondaryButtonClass} onClick={() => importFileRef.current?.click()}>Choisir un fichier</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-4">
         <input className={fieldClass} placeholder="Titre" value={post.title} onChange={(e) => setPost({ ...post, title: e.target.value })} />
         <input className={fieldClass} placeholder="H1" value={post.h1} onChange={(e) => setPost({ ...post, h1: e.target.value })} />
+        <textarea className={fieldClass} placeholder="Résumé court" value={post.excerpt} onChange={(e) => setPost({ ...post, excerpt: e.target.value })} />
         <textarea className={fieldClass} placeholder="Chapo HTML" value={post.chapoHtml} onChange={(e) => setPost({ ...post, chapoHtml: e.target.value })} />
         <RichContentEditor value={post.contentJson} onChange={(v) => setPost({ ...post, contentJson: v, contentHtml: v.html })} onUploadImage={uploadEditorImage} />
         <section className="rounded border border-slate-700 p-3">
@@ -696,5 +812,6 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
         </button>
       </aside>
     </div>
+    </>
   );
 }

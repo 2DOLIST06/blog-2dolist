@@ -6,6 +6,7 @@ export interface RichContentValue {
   type: 'doc';
   html: string;
   blocks?: RichContentBlock[];
+  [key: string]: unknown;
 }
 
 type RichContentBlock = Record<string, unknown> & {
@@ -253,7 +254,9 @@ export function RichContentEditor({
   const [resizeHint, setResizeHint] = useState('');
 
   useEffect(() => {
-    const nextHtml = valueToEditableHtml(value);
+    // Imported HTML is inert while parsed in a template; remove executable content
+    // before it ever reaches the contenteditable DOM. data-* widget attributes remain.
+    const nextHtml = sanitizeCustomHtmlBlock(valueToEditableHtml(value));
     if (ref.current && ref.current.innerHTML !== nextHtml) ref.current.innerHTML = nextHtml;
   }, [value]);
 
