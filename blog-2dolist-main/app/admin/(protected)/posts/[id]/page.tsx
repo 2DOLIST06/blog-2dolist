@@ -14,6 +14,9 @@ type ApiPost = Record<string, unknown> & {
   slug?: string;
   path?: string;
   title?: string;
+  old_url?: string | null;
+  oldUrl?: string | null;
+  excerpt?: string | null;
   h1?: string | null;
   chapoHtml?: string | null;
   contentHtml?: string | null;
@@ -34,6 +37,8 @@ type ApiPost = Record<string, unknown> & {
   tagsJson?: unknown;
   jsonLd?: unknown;
   status?: string | null;
+  publishedAt?: string | null;
+  updatedAt?: string | null;
   locale?: Locale | null;
   translationGroupId?: string | null;
   translations?: Array<{ id?: string | null; locale?: Locale | null; slug?: string | null; path?: string | null; canonicalUrl?: string | null }> | null;
@@ -55,6 +60,8 @@ type EditorInitialPost = {
   slug?: string;
   path?: string;
   title?: string;
+  old_url?: string;
+  excerpt?: string;
   h1?: string;
   chapoHtml?: string;
   contentHtml?: string;
@@ -77,6 +84,8 @@ type EditorInitialPost = {
   jsonLd?: string;
   status?: 'DRAFT' | 'PUBLISHED' | 'draft' | 'published';
   authorId?: string;
+  publishedAt?: string;
+  updatedAt?: string;
   author?: { id?: string | null } | null;
   locale?: Locale;
   translationGroupId?: string;
@@ -184,6 +193,8 @@ const apiPostToEditorInitialPost = (post: ApiPost): EditorInitialPost => {
     slug: post.slug ?? '',
     path: post.path ?? '',
     title: post.title ?? '',
+    old_url: post.old_url ?? post.oldUrl ?? '',
+    excerpt: post.excerpt ?? '',
     h1: post.h1 ?? post.title ?? '',
     chapoHtml: post.chapoHtml ?? '',
     contentHtml: contentJson.html,
@@ -209,6 +220,8 @@ const apiPostToEditorInitialPost = (post: ApiPost): EditorInitialPost => {
     jsonLd: stringifyJsonLd(post.jsonLd),
     status,
     authorId: post.authorId ?? post.author?.id ?? '',
+    publishedAt: post.publishedAt ?? '',
+    updatedAt: post.updatedAt ?? '',
     author: post.author,
     locale: post.locale === 'fr' ? 'fr' : 'en',
     translationGroupId: post.translationGroupId ?? post.id ?? '',
