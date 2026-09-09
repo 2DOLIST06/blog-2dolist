@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDate } from '@/lib/content/presenters';
-import { getPostHref } from '@/lib/content/urls';
+import { getCategoryHref, getPostHref } from '@/lib/content/urls';
 import { Badge } from '@/components/ui/Badge';
 import type { Author, Category, Post } from '@/types/content';
 
@@ -29,7 +29,7 @@ export function PostCard({ post, category, author, href }: PostCardProps) {
         </div>
       </Link>
       <div className="p-5">
-        {category ? <Badge>{category.title}</Badge> : null}
+        {category ? <Link href={getCategoryHref(category, post.locale)}><Badge>{category.title}</Badge></Link> : null}
         <h3 className="mt-3 text-lg font-semibold text-slate-900">
           <Link href={articleHref}>{post.title}</Link>
         </h3>

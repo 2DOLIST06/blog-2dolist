@@ -4,7 +4,8 @@ import { PostCard } from '@/components/blog/PostCard';
 import { Container } from '@/components/ui/Container';
 import { withConfiguredLongCategoryCopy } from '@/lib/content/category-copy';
 import { contentRepository } from '@/lib/content/repository';
-import { absoluteUrl, getCategoryPath } from '@/lib/i18n/routing';
+import { getCategoryHref } from '@/lib/content/urls';
+import { getCategoryPath } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { siteConfig } from '@/lib/site/config';
 
@@ -32,13 +33,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return buildMetadata({
     title: `${category.title} | Catégorie`,
     description: category.description,
-    path: getCategoryPath('fr', category.slug),
-    locale: 'fr',
-    hreflang: [
-      { hreflang: 'en', href: absoluteUrl(getCategoryPath('en', category.slug)) },
-      { hreflang: 'fr', href: absoluteUrl(getCategoryPath('fr', category.slug)) },
-      { hreflang: 'x-default', href: absoluteUrl(getCategoryPath('en', category.slug)) }
-    ]
+    path: getCategoryHref(category, 'fr'),
+    canonicalUrl: category.canonicalUrl,
+    locale: 'fr'
   });
 }
 

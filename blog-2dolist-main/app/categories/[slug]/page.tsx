@@ -4,6 +4,7 @@ import { PostCard } from '@/components/blog/PostCard';
 import { Container } from '@/components/ui/Container';
 import { withConfiguredLongCategoryCopy } from '@/lib/content/category-copy';
 import { contentRepository } from '@/lib/content/repository';
+import { getCategoryHref } from '@/lib/content/urls';
 import { getCategoryPath } from '@/lib/i18n/routing';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { siteConfig } from '@/lib/site/config';
@@ -32,7 +33,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return buildMetadata({
     title: `${category.title} | Catégorie`,
     description: category.description,
-    path: getCategoryPath('fr', category.slug),
+    path: getCategoryHref(category, 'fr'),
+    canonicalUrl: category.canonicalUrl,
     locale: 'fr'
   });
 }

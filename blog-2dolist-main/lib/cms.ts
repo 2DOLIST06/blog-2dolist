@@ -8,7 +8,7 @@ const DEFAULT_AVATAR = '/og-default.svg';
 
 interface CmsListResponse<T> { docs?: T[]; totalDocs?: number; page?: number; totalPages?: number }
 interface CmsMedia { url?: string | null }
-interface CmsCategory { id: string; slug: string; title?: string | null; name?: string | null; description?: string | null }
+interface CmsCategory { id: string; slug: string; title?: string | null; name?: string | null; description?: string | null; path?: string | null; canonicalUrl?: string | null }
 interface CmsAuthor { id: string; slug: string; name?: string | null; bio?: string | null; avatar?: CmsMedia | null }
 interface CmsPost {
   id: string; slug: string; title?: string | null; excerpt?: string | null; content?: string | null; publishedAt?: string | null;
@@ -58,7 +58,7 @@ async function cmsFetch<T>(path: string, revalidate = 120): Promise<T | null> {
   return null;
 }
 
-const mapCategory = (c: CmsCategory): Category => ({ id: c.id, slug: c.slug, title: c.title?.trim() || c.name?.trim() || 'Catégorie', description: c.description?.trim() || 'Sans description.' });
+const mapCategory = (c: CmsCategory): Category => ({ id: c.id, slug: c.slug, title: c.title?.trim() || c.name?.trim() || 'Catégorie', description: c.description?.trim() || 'Sans description.', path: c.path?.trim() || undefined, canonicalUrl: c.canonicalUrl?.trim() || undefined });
 const mapAuthor = (a?: CmsAuthor | null): Author => ({ id: a?.id || 'unknown-author', slug: a?.slug || 'auteur-inconnu', name: a?.name?.trim() || 'Équipe éditoriale', role: 'Auteur', bio: a?.bio?.trim() || 'Auteur.', avatar: toCmsAssetUrl(a?.avatar?.url) || DEFAULT_AVATAR });
 const mapPost = (p: CmsPost): Post => {
   const category = typeof p.category === 'object' && p.category ? p.category : null;

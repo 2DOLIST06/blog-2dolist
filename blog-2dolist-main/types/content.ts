@@ -19,6 +19,8 @@ export interface Category {
   slug: string;
   title: string;
   description: string;
+  path?: string;
+  canonicalUrl?: string;
 }
 
 export interface PostSection {
