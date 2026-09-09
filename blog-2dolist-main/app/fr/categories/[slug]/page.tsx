@@ -31,11 +31,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 
   return buildMetadata({
-    title: `${category.title} | Catégorie`,
-    description: category.description,
+    title: category.metaTitle || category.title,
+    description: category.metaDescription || category.excerpt || category.description,
     path: getCategoryHref(category, 'fr'),
     canonicalUrl: category.canonicalUrl,
-    locale: 'fr'
+    locale: 'fr',
+    noIndex: category.isIndexable === false,
+    follow: true
   });
 }
 

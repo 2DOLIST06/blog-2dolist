@@ -57,6 +57,9 @@ export interface Post {
   slug: string;
   title: string;
   excerpt: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  isIndexable?: boolean;
   description: string;
   coverImage: string;
   publishedAt: string;

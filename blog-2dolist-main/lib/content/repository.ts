@@ -28,6 +28,7 @@ interface ApiPost {
   status?: string | null;
   isActive?: boolean | null;
   isIndexable?: boolean | null;
+  metaTitle?: string | null;
   metaDescription?: string | null;
   publishedAt?: string | null;
   updatedAt?: string | null;
@@ -200,9 +201,12 @@ const toPost = (apiPost: ApiPost): Post => {
   slug: apiPost.slug,
   title: apiPost.h1?.trim() || apiPost.title,
   excerpt: getPostExcerpt(apiPost),
+  metaTitle: apiPost.metaTitle?.trim() || undefined,
+  metaDescription: apiPost.metaDescription?.trim() || undefined,
+  isIndexable: apiPost.isIndexable ?? true,
   description:
-    apiPost.seo?.description?.trim() ||
     apiPost.metaDescription?.trim() ||
+    apiPost.seo?.description?.trim() ||
     apiPost.excerpt?.trim() ||
     stripHtml(apiPost.chapoHtml ?? ''),
   coverImage: toAbsoluteApiAssetUrl(
