@@ -28,6 +28,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'blog.2dolist.fr',
+        pathname: '/wp-content/uploads/**'
+      },
+      {
+        protocol: 'https',
         hostname: '**.cloudfront.net'
       },
       ...configuredImageHosts.map((hostname) => ({
