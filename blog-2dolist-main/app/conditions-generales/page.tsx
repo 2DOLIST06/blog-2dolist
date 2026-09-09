@@ -4,8 +4,8 @@ import { LegalPage } from '@/components/legal/LegalPage';
 import { buildMetadata } from '@/lib/seo/metadata';
 
 export const metadata: Metadata = buildMetadata({
-  title: 'Conditions générales | 2Dolist - Le blog',
-  description: 'Consultez les conditions générales applicables au blog 2Dolist et à l’utilisation du site.',
+  title: 'Conditions générales d’utilisation | 2DOLIST - Le blog',
+  description: 'Conditions générales encadrant l’accès aux contenus et aux liens partenaires du blog 2DOLIST.',
   canonicalUrl: 'https://blog.2dolist.fr/conditions-generales/',
   noIndex: true,
   follow: true,
@@ -14,61 +14,61 @@ export const metadata: Metadata = buildMetadata({
 
 export default function TermsPage() {
   return (
-    <LegalPage
-      title="Conditions générales"
-      intro="Les présentes conditions encadrent l’accès au blog 2Dolist et son utilisation."
-    >
+    <LegalPage title="Conditions générales d’utilisation" intro="Les présentes conditions encadrent l’accès à blog.2dolist.fr et son utilisation.">
       <h2>Éditeur et objet du site</h2>
       <p>
-        Le site <strong>blog.2dolist.fr</strong> est édité par <strong>2DOLIST</strong>, situé au 1735 Route des
-        Comdamines, 06670 Saint-Martin-du-Var. Le numéro SIRET de l’établissement est celui de 2DOLIST se terminant
-        par <strong>66</strong>. Vous pouvez contacter l’éditeur au moyen du <Link href="/contact">formulaire de contact</Link>.
-      </p>
-      <p>
-        Le blog propose des contenus d’information, de réservation et d’orientation autour des activités de loisirs et
-        des activités aériennes. Toute consultation du site implique l’acceptation des présentes conditions.
+        Le site est édité par <strong>2DOLIST</strong> (SAS / SASU), SIRET <strong>948 606 702 00066</strong>, dont le
+        siège social est situé 1735 route des Condamines, 06670 Saint-Martin-du-Var. Le blog publie des informations sur
+        les activités de loisirs, notamment les activités aériennes, et peut orienter vers 2DOLIST, des partenaires ou des
+        pages de réservation.
       </p>
 
-      <h2>Information et disponibilité</h2>
+      <h2>Accès au site</h2>
       <p>
-        2DOLIST s’efforce de fournir des informations utiles et à jour, sans garantir qu’elles soient exhaustives ou
-        exemptes d’erreur. Les contenus ne remplacent ni les consignes d’un professionnel ni les règles de sécurité propres
-        à chaque activité. L’accès au site peut être suspendu pour maintenance, sécurité ou en cas de force majeure.
+        Le site est normalement accessible sans inscription. Son accès peut être interrompu ou limité, notamment pour la
+        maintenance, la sécurité, une évolution technique ou un événement indépendant de la volonté de 2DOLIST. Aucun niveau
+        permanent de disponibilité n’est garanti.
       </p>
 
-      <h2>Réservation et services de tiers</h2>
+      <h2>Contenus informatifs</h2>
       <p>
-        Le blog peut orienter vers des prestataires ou plateformes partenaires, notamment au moyen de liens ou widgets.
-        Une réservation réalisée sur un service tiers est conclue directement avec le prestataire concerné et relève de
-        ses propres prix, disponibilités, conditions de vente, d’annulation et de responsabilité. L’utilisateur doit les
-        consulter avant toute commande. 2DOLIST n’est pas partie à ce contrat, sauf indication expresse contraire.
+        Les contenus sont fournis à titre informatif. Malgré le soin apporté à leur préparation, ils peuvent devenir
+        incomplets ou obsolètes. Ils ne remplacent pas les consignes d’un professionnel, l’évaluation de l’aptitude du
+        participant, les règles locales, les conditions météorologiques ou les mesures de sécurité propres à une activité.
+      </p>
+
+      <h2>Liens externes et partenaires</h2>
+      <p>
+        Des liens ou widgets peuvent conduire vers des offres de 2DOLIST ou de tiers et certains liens peuvent être affiliés.
+        Lorsqu’une réservation est conclue sur un service tiers, ce service ou le prestataire indiqué détermine les prix,
+        disponibilités, conditions de vente, d’annulation et d’exécution. Le blog n’est pas le vendeur direct de toutes les
+        prestations présentées et n’est partie au contrat que lorsqu’une page de réservation l’indique expressément.
+      </p>
+
+      <h2>Responsabilité</h2>
+      <p>
+        L’utilisateur vérifie les informations déterminantes directement auprès du prestataire avant toute réservation ou
+        participation. 2DOLIST ne répond pas du contenu, de la disponibilité ou de l’exécution des services proposés par
+        un tiers, sous réserve des responsabilités qui ne peuvent être exclues par la loi.
       </p>
 
       <h2>Propriété intellectuelle</h2>
       <p>
-        La structure du site, ses textes, visuels, marques et autres contenus sont protégés par les droits de propriété
-        intellectuelle de 2DOLIST ou de leurs titulaires. Toute reproduction ou exploitation au-delà d’un usage privé,
-        sans autorisation préalable, est interdite. Les marques et contenus de tiers restent la propriété de leurs auteurs.
+        La structure, les textes, visuels, marques et autres éléments du site sont protégés et appartiennent à 2DOLIST ou à
+        leurs titulaires. Toute utilisation excédant la consultation privée et les exceptions légales requiert une
+        autorisation préalable.
       </p>
 
-      <h2>Liens externes et responsabilité</h2>
-      <p>
-        Les liens externes sont proposés à titre pratique. 2DOLIST ne contrôle pas en permanence leur contenu ni leur
-        disponibilité. Chaque utilisateur demeure responsable de ses choix, de la vérification des conditions d’une
-        activité et du respect des consignes de sécurité, restrictions médicales, règles locales et conditions météo.
-      </p>
+      <h2>Données personnelles</h2>
+      <p>Les traitements de données sont décrits dans la <Link href="/politique-de-confidentitalite/">politique de confidentialité</Link>.</p>
 
-      <h2>Données personnelles et cookies</h2>
-      <p>
-        Le traitement des données personnelles et l’utilisation des traceurs sont décrits dans la{' '}
-        <Link href="/politique-de-confidentitalite">politique de confidentialité</Link> et la{' '}
-        <Link href="/politique-de-cookies">politique de cookies</Link>.
-      </p>
+      <h2>Cookies</h2>
+      <p>Les traceurs et leur gestion sont présentés dans la <Link href="/politique-de-cookies/">politique de cookies</Link>.</p>
 
       <h2>Droit applicable</h2>
       <p>
-        Les présentes conditions sont soumises au droit français. En cas de difficulté, les parties rechercheront d’abord
-        une solution amiable. À défaut, le litige sera porté devant les juridictions compétentes selon les règles légales applicables.
+        Les présentes conditions sont régies par le droit français. En cas de différend, une solution amiable sera recherchée
+        avant la saisine des juridictions compétentes selon les règles applicables.
       </p>
     </LegalPage>
   );

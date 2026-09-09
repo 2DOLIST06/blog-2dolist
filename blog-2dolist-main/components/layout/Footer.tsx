@@ -38,6 +38,7 @@ export function Footer() {
           <nav aria-label="Liens légaux">
             <h3 className="font-semibold text-slate-900">Informations légales</h3>
             <ul className="mt-2 space-y-2 text-sm text-slate-600">
+              <li><Link href="/mentions-legales/">Mentions légales</Link></li>
               <li><Link href="/politique-de-confidentitalite/">Politique de confidentialité</Link></li>
               <li><Link href="/conditions-generales/">Conditions générales</Link></li>
               <li><Link href="/politique-de-cookies/">Politique de cookies</Link></li>
