@@ -15,7 +15,7 @@ export const buildMetadata = (input: SeoInput): Metadata => {
     alternates: {
       canonical
     },
-    robots: input.noIndex ? { index: false, follow: false } : { index: true, follow: true },
+    robots: { index: !input.noIndex, follow: input.follow ?? true },
     openGraph: {
       type: input.type ?? 'website',
       url: canonical,

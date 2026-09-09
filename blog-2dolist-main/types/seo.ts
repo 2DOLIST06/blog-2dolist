@@ -11,6 +11,7 @@ export interface SeoInput {
   image?: string;
   type?: 'website' | 'article';
   noIndex?: boolean;
+  follow?: boolean;
   publishedTime?: string;
   modifiedTime?: string;
   keywords?: string[];

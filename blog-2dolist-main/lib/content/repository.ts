@@ -55,6 +55,13 @@ interface ApiCategory {
   name?: string | null;
   title?: string | null;
   description?: string | null;
+  excerpt?: string | null;
+  contentHtml?: string | null;
+  contentJson?: Record<string, unknown> | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  isActive?: boolean | null;
+  isIndexable?: boolean | null;
   path?: string | null;
   canonicalUrl?: string | null;
 }
@@ -235,11 +242,27 @@ const toPost = (apiPost: ApiPost): Post => {
 });
 };
 
+const getCategoryHtml = (category: ApiCategory) => {
+  const jsonHtml = typeof category.contentJson?.html === 'string' ? category.contentJson.html : '';
+  const blocksHtml = Array.isArray(category.contentJson?.blocks)
+    ? category.contentJson.blocks.map((block) => block && typeof block === 'object' && typeof (block as { html?: unknown }).html === 'string' ? (block as { html: string }).html : '').join('')
+    : '';
+  const html = category.contentHtml?.trim() || jsonHtml.trim() || blocksHtml.trim();
+  return html ? normalizeContentImageSources(html) : undefined;
+};
+
 const toCategory = (category: ApiCategory): Category => ({
   id: category.id,
   slug: category.slug,
-  title: category.title?.trim() || category.name?.trim() || 'Catégorie',
-  description: category.description?.trim() || 'Découvrez tous les articles de cette catégorie.',
+  title: category.name?.trim() || category.title?.trim() || 'Catégorie',
+  description: category.excerpt?.trim() || category.description?.trim() || 'Découvrez tous les articles de cette catégorie.',
+  excerpt: category.excerpt?.trim() || category.description?.trim() || undefined,
+  contentHtml: getCategoryHtml(category),
+  contentJson: category.contentJson ?? undefined,
+  metaTitle: category.metaTitle?.trim() || undefined,
+  metaDescription: category.metaDescription?.trim() || undefined,
+  isActive: category.isActive ?? true,
+  isIndexable: category.isIndexable ?? true,
   path: category.path?.trim() || undefined,
   canonicalUrl: category.canonicalUrl?.trim() || undefined
 });
@@ -413,7 +436,7 @@ export const contentRepository = {
   },
   async getAllCategoriesByLocale(locale: Locale): Promise<Category[]> {
     const apiCategories = await fetchCollection<ApiCategory>(`/api/categories?locale=${locale}`);
-    return apiCategories.map(toCategory);
+    return apiCategories.filter((category) => category.isActive !== false).map(toCategory);
   },
   async getAllCategories(): Promise<Category[]> {
     return this.getAllCategoriesByLocale(DEFAULT_LOCALE);
@@ -427,7 +450,7 @@ export const contentRepository = {
   },
   async getCategoryByPath(path: string, locale: Locale = DEFAULT_LOCALE): Promise<Category | undefined> {
     const apiCategory = await fetchCategoryByPath(path);
-    if (apiCategory) return toCategory(apiCategory);
+    if (apiCategory && apiCategory.isActive !== false) return toCategory(apiCategory);
 
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     const categories = await this.getAllCategoriesByLocale(locale);

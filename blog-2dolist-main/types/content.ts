@@ -19,6 +19,13 @@ export interface Category {
   slug: string;
   title: string;
   description: string;
+  excerpt?: string;
+  contentHtml?: string;
+  contentJson?: Record<string, unknown>;
+  metaTitle?: string;
+  metaDescription?: string;
+  isActive?: boolean;
+  isIndexable?: boolean;
   path?: string;
   canonicalUrl?: string;
 }
