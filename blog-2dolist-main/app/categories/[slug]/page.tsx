@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { RichContentRenderer } from '@/components/blog/RichContentRenderer';
 import { PostCard } from '@/components/blog/PostCard';
 import { Container } from '@/components/ui/Container';
 import { withConfiguredLongCategoryCopy } from '@/lib/content/category-copy';
@@ -31,11 +32,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 
   return buildMetadata({
-    title: `${category.title} | Catégorie`,
-    description: category.description,
+    title: category.metaTitle || `${category.title} | Catégorie`,
+    description: category.metaDescription || category.description,
     path: getCategoryHref(category, 'fr'),
     canonicalUrl: category.canonicalUrl,
-    locale: 'fr'
+    locale: 'fr',
+    noIndex: category.isIndexable === false,
+    follow: true
   });
 }
 
@@ -55,7 +58,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     <Container>
       <section className="py-12">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900">{category.title}</h1>
-        <p className="mt-2 max-w-2xl text-slate-600">{category.description}</p>
+        <p className="mt-2 max-w-2xl text-slate-600">{category.excerpt || category.description}</p>
+          {category.contentHtml ? <div className="mt-8 max-w-4xl"><RichContentRenderer contentHtml={category.contentHtml} /></div> : null}
 
         <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
