@@ -28,8 +28,8 @@ export async function generateMetadata({ params }: { params: Promise<{ path: str
     }
     const category = withConfiguredLongCategoryCopy(rawCategory);
     return buildMetadata({
-      title: category.metaTitle || `${category.title} | Catégorie`,
-      description: category.metaDescription || category.description,
+      title: category.metaTitle || category.title,
+      description: category.metaDescription || category.excerpt || category.description,
       path: category.path ?? requestedPath,
       canonicalUrl: category.canonicalUrl,
       locale: 'fr',

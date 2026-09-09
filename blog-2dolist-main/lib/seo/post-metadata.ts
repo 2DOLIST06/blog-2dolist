@@ -7,10 +7,13 @@ import type { Post } from '@/types/content';
 
 export const buildPostMetadata = (post: Post): Metadata =>
   buildMetadata({
-    title: `${post.title} | ${siteConfig.name}`,
-    description: post.description,
-    path: getPostHref(post, 'fr'),
+    title: post.metaTitle || post.title,
+    description: post.metaDescription || post.excerpt,
+    path: post.path || getPostHref(post, 'fr'),
+    canonicalUrl: post.canonicalUrl,
     locale: 'fr',
+    noIndex: post.isIndexable === false,
+    follow: true,
     image: post.coverImage,
     type: 'article',
     publishedTime: post.publishedAt,
