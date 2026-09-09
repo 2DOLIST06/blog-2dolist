@@ -9,7 +9,7 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Container } from '@/components/ui/Container';
 import { extractHeadingsFromHtml } from '@/lib/content/headings';
 import { formatDate } from '@/lib/content/presenters';
-import { getPostHref } from '@/lib/content/urls';
+import { getCategoryHref, getPostHref } from '@/lib/content/urls';
 import { absoluteUrl, getArticlesPath, getHomePath, type Locale } from '@/lib/i18n/routing';
 import { blogPostingJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld';
 import type { Author, Category, Post, RelatedPostSummary } from '@/types/content';
@@ -40,6 +40,7 @@ export function ArticlePageView({ post, author, category, relatedPosts, canEdit 
   const articlePath = getPostHref(post, post.locale);
   const articleUrl = post.canonicalUrl ?? absoluteUrl(articlePath);
   const authorName = author?.name ?? labels.fallbackAuthor;
+  const categoryHref = category ? getCategoryHref(category, post.locale) : undefined;
 
   const postJsonLd = blogPostingJsonLd({
     title: post.title,
@@ -56,14 +57,14 @@ export function ArticlePageView({ post, author, category, relatedPosts, canEdit 
 
   const breadcrumbs = breadcrumbJsonLd([
     { name: labels.home, path: getHomePath(post.locale) },
-    { name: labels.articles, path: getArticlesPath(post.locale) },
+    ...(categoryHref && category ? [{ name: category.title, path: categoryHref }] : [{ name: labels.articles, path: getArticlesPath(post.locale) }]),
     { name: post.title, path: articlePath }
   ]);
 
   return (
     <Container>
       <article className="py-10">
-        <Breadcrumbs items={[{ label: labels.home, href: getHomePath(post.locale) }, { label: labels.articles, href: getArticlesPath(post.locale) }, { label: post.title, href: articlePath }]} />
+        <Breadcrumbs items={[{ label: labels.home, href: getHomePath(post.locale) }, ...(categoryHref && category ? [{ label: category.title, href: categoryHref }] : [{ label: labels.articles, href: getArticlesPath(post.locale) }]), { label: post.title, href: articlePath }]} />
 
 
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

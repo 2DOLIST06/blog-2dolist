@@ -55,6 +55,8 @@ interface ApiCategory {
   name?: string | null;
   title?: string | null;
   description?: string | null;
+  path?: string | null;
+  canonicalUrl?: string | null;
 }
 
 interface ApiAuthor {
@@ -237,8 +239,36 @@ const toCategory = (category: ApiCategory): Category => ({
   id: category.id,
   slug: category.slug,
   title: category.title?.trim() || category.name?.trim() || 'Catégorie',
-  description: category.description?.trim() || 'Découvrez tous les articles de cette catégorie.'
+  description: category.description?.trim() || 'Découvrez tous les articles de cette catégorie.',
+  path: category.path?.trim() || undefined,
+  canonicalUrl: category.canonicalUrl?.trim() || undefined
 });
+
+async function fetchCategoryByPath(path: string): Promise<ApiCategory | null> {
+  try {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const params = new URLSearchParams({ path: normalizedPath });
+    const response = await fetch(buildPublicApiUrl(`/api/categories/by-path?${params.toString()}`), {
+      next: { revalidate: 60 }
+    });
+    if (!response.ok) return null;
+
+    const payload = (await response.json().catch(() => ({}))) as { data?: unknown; category?: unknown };
+    if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+      const data = payload.data as { category?: unknown };
+      if (data.category && typeof data.category === 'object' && !Array.isArray(data.category)) {
+        return data.category as ApiCategory;
+      }
+      return payload.data as ApiCategory;
+    }
+    if (payload.category && typeof payload.category === 'object' && !Array.isArray(payload.category)) {
+      return payload.category as ApiCategory;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 const toAuthor = (author: ApiAuthor): Author => ({
   id: author.id,
@@ -394,6 +424,14 @@ export const contentRepository = {
   },
   async getCategoryBySlug(slug: string): Promise<Category | undefined> {
     return this.getCategoryBySlugAndLocale(slug, DEFAULT_LOCALE);
+  },
+  async getCategoryByPath(path: string, locale: Locale = DEFAULT_LOCALE): Promise<Category | undefined> {
+    const apiCategory = await fetchCategoryByPath(path);
+    if (apiCategory) return toCategory(apiCategory);
+
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const categories = await this.getAllCategoriesByLocale(locale);
+    return categories.find((category) => category.path === normalizedPath);
   },
   async getPostsByCategoryAndLocale(slug: string, locale: Locale): Promise<Post[]> {
     const apiPosts = await fetchCollection<ApiPost>(`/api/categories/${slug}/posts?locale=${locale}`);

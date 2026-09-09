@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next';
 import { contentRepository } from '@/lib/content/repository';
 import { siteConfig } from '@/lib/constants';
-import { absoluteUrl, getCategoryPath } from '@/lib/i18n/routing';
+import { getCategoryHref } from '@/lib/content/urls';
+import { absoluteUrl } from '@/lib/i18n/routing';
 import type { Locale } from '@/lib/i18n/routing';
 
 const staticPathsByLocale: Record<Locale, string[]> = {
@@ -26,7 +27,7 @@ export const getLocalizedSitemap = async (locale: Locale): Promise<MetadataRoute
   }));
 
   const categoryPages: MetadataRoute.Sitemap = categories.map((category) => ({
-    url: absoluteUrl(getCategoryPath(locale, category.slug)),
+    url: absoluteUrl(category.canonicalUrl ?? getCategoryHref(category, locale)),
     lastModified: new Date()
   }));
 
