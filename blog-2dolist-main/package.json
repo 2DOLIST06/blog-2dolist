@@ -11,6 +11,7 @@
     "build": "next build",
     "start": "next start",
     "seo:verify": "node scripts/verify-seo.mjs",
+    "seo:audit": "node scripts/verify-seo.mjs --all",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },
