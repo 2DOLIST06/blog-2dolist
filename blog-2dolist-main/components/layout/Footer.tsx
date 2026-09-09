@@ -14,7 +14,7 @@ export function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-slate-50 py-10">
       <Container>
-        <div className="grid gap-8 md:grid-cols-3">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <h3 className="font-semibold text-slate-900">{siteConfig.name}</h3>
             <p className="mt-2 text-sm text-slate-600">
@@ -35,6 +35,14 @@ export function Footer() {
             <h3 className="font-semibold text-slate-900">Newsletter</h3>
             <p className="mt-2 text-sm text-slate-600">{locale === 'fr' ? 'Recevez les nouveaux contenus du blog.' : 'Get the latest blog content.'}</p>
           </div>
+          <nav aria-label="Liens légaux">
+            <h3 className="font-semibold text-slate-900">Informations légales</h3>
+            <ul className="mt-2 space-y-2 text-sm text-slate-600">
+              <li><Link href="/politique-de-confidentitalite/">Politique de confidentialité</Link></li>
+              <li><Link href="/conditions-generales/">Conditions générales</Link></li>
+              <li><Link href="/politique-de-cookies/">Politique de cookies</Link></li>
+            </ul>
+          </nav>
         </div>
       </Container>
     </footer>
