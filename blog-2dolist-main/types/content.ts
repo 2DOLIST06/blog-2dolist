@@ -18,6 +18,7 @@ export interface Category {
   id: string;
   slug: string;
   title: string;
+  h1?: string;
   description: string;
   excerpt?: string;
   contentHtml?: string;

@@ -12,6 +12,7 @@
     "start": "next start",
     "seo:verify": "node scripts/verify-seo.mjs",
     "seo:audit": "node scripts/verify-seo.mjs --all",
+    "content:seed-categories": "node scripts/seed-category-editorial-content.mjs",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },

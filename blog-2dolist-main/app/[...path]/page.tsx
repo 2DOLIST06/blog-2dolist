@@ -57,7 +57,7 @@ export default async function WordPressPathArticlePage({ params }: { params: Pro
     return (
       <Container>
         <section className="py-12">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">{category.title}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{category.h1 || category.title}</h1>
           <p className="mt-2 max-w-2xl text-slate-600">{category.excerpt || category.description}</p>
           {category.contentHtml ? <div className="mt-8 max-w-4xl"><RichContentRenderer contentHtml={category.contentHtml} /></div> : null}
           <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -65,6 +65,7 @@ export default async function WordPressPathArticlePage({ params }: { params: Pro
               <PostCard key={post.id} post={post} author={authors.find((author) => author.slug === post.authorSlug)} category={category} />
             ))}
           </div>
+          {posts.length === 0 ? <p className="mt-8 rounded-xl bg-slate-50 p-5 text-slate-600">De nouveaux guides seront bientôt publiés dans cette rubrique.</p> : null}
         </section>
       </Container>
     );
