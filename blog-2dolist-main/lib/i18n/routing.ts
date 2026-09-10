@@ -49,5 +49,5 @@ export const absoluteUrl = (pathOrUrl: string) => {
 
 export const getNavigation = (_locale: Locale = 'fr') => [
   { label: 'Accueil', href: getHomePath('fr') },
-  { label: 'Catégories', href: getCategoriesPath('fr') }
+  { label: 'Rubriques', href: '/#activites-aeriennes' }
 ];

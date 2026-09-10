@@ -4,7 +4,7 @@ export { siteConfig } from '@/lib/site/config';
 export const mainNavigation: NavigationItem[] = [
   { label: 'Accueil', href: '/' },
   { label: 'Articles', href: '/articles' },
-  { label: 'Catégories', href: '/categories' },
+  { label: 'Rubriques', href: '/#activites-aeriennes' },
   { label: 'À propos', href: '/about' },
   { label: 'Contact', href: '/contact' }
 ];

@@ -10,16 +10,27 @@ interface PostCardProps {
   category?: Category;
   author?: Author;
   href?: string;
+  maxExcerptLength?: number;
 }
 
-export function PostCard({ post, category, author, href }: PostCardProps) {
+const truncateExcerpt = (excerpt: string, maxLength?: number) => {
+  if (!maxLength || excerpt.length <= maxLength) return excerpt;
+
+  const shortened = excerpt.slice(0, maxLength - 1);
+  const lastSpace = shortened.lastIndexOf(' ');
+  return `${shortened.slice(0, lastSpace > 0 ? lastSpace : undefined).trimEnd()}…`;
+};
+
+export function PostCard({ post, category, author, href, maxExcerptLength }: PostCardProps) {
   const articleHref = href ?? getPostHref(post);
   const byline = 'Équipe éditoriale';
   const readingLabel = 'min de lecture';
-  const excerpt =
+  const excerpt = truncateExcerpt(
     post.excerpt?.trim() ||
     post.description?.trim() ||
-    'Un guide pour comprendre les bases du sujet et mieux organiser les informations essentielles.';
+    'Un guide pour comprendre les bases du sujet et mieux organiser les informations essentielles.',
+    maxExcerptLength
+  );
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
