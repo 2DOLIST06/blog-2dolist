@@ -32,6 +32,16 @@ const asArray = (payload, resource) => {
 };
 const normalizePath = (path) => path.startsWith('/') ? path : `/${path}`;
 const absoluteUrl = (src, pageUrl) => new URL(src, pageUrl).href;
+const isAffiliateTrackingImage = (src) => {
+  try {
+    const url = new URL(decode(src));
+    return /(?:^|\.)awin1\.com$/i.test(url.hostname) && url.pathname.toLowerCase() === '/cshow.php';
+  } catch {
+    return false;
+  }
+};
+const hasFaqEntries = (value) =>
+  Array.isArray(value) && value.some((faq) => faq?.question?.trim() && faq?.answer?.trim());
 const markerChecks = [
   ['commentaire Gutenberg ouvrant', /<!--\s*wp:/i],
   ['commentaire Gutenberg fermant', /<!--\s*\/\s*wp:/i],
@@ -158,12 +168,14 @@ async function auditPath(path, suppliedRecord) {
     const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] || '';
     if (stripHtml(main).length < 100) error('contentErrors', path, 'contenu principal vide ou trop court');
     if (!isCategory && stripHtml(record.contentHtml || record.content || '').length > 0 && stripHtml(main).length < 300) error('contentErrors', path, 'contenu article non affiché');
-    if (!isCategory && record.faqJson && !/<(?:section|div)[^>]*(?:faq|questions)/i.test(html)) error('contentErrors', path, 'FAQ API non détectée dans le HTML');
+    if (!isCategory && hasFaqEntries(record.faqJson) && !/<(?:section|div)\b[^>]*(?:\bid=["'][^"']*faq|\bclass=["'][^"']*faq|\baria-labelledby=["'][^"']*faq)/i.test(html)) error('contentErrors', path, 'FAQ API non détectée dans le HTML');
 
     for (const [label, expression] of markerChecks) if (expression.test(html)) report.occurrences.push(`${path}: ${label}`);
     if (path.includes('/fr/') || path.includes('/articles/')) error('httpErrors', path, 'path interdit audité');
 
-    const imageSources = [...html.matchAll(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)].map((match) => match[1]);
+    const imageSources = [...html.matchAll(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)]
+      .map((match) => match[1])
+      .filter((src) => !isAffiliateTrackingImage(src));
     for (const src of [...new Set(imageSources)]) {
       const imageUrl = absoluteUrl(decode(src), pageUrl);
       try {

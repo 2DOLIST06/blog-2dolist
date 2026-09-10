@@ -34,6 +34,25 @@ const labelsByLocale = {
   }
 } satisfies Record<'fr', Record<string, string>>;
 
+const normalizeVisibleText = (value: string) =>
+  value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#(?:x0*27|39);|&apos;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase('fr');
+
+const contentAlreadyContainsFaq = (contentHtml: string | undefined, faqs: Post['faqJson']) => {
+  if (!contentHtml || !faqs?.length) return false;
+  const content = normalizeVisibleText(contentHtml);
+  return faqs.every(({ question, answer }) =>
+    content.includes(normalizeVisibleText(question)) && content.includes(normalizeVisibleText(answer))
+  );
+};
+
 export function ArticlePageView({ post, author, category, relatedPosts, canEdit = false }: ArticlePageViewProps) {
   const labels = labelsByLocale.fr;
   const articleHeadings = extractHeadingsFromHtml(post.contentHtml);
@@ -41,6 +60,7 @@ export function ArticlePageView({ post, author, category, relatedPosts, canEdit 
   const articleUrl = post.canonicalUrl ?? absoluteUrl(articlePath);
   const authorName = author?.name ?? labels.fallbackAuthor;
   const categoryHref = category ? getCategoryHref(category, post.locale) : undefined;
+  const shouldRenderFaq = !contentAlreadyContainsFaq(post.contentHtml, post.faqJson);
 
   const postJsonLd = blogPostingJsonLd({
     title: post.title,
@@ -99,7 +119,7 @@ export function ArticlePageView({ post, author, category, relatedPosts, canEdit 
               const id = `${post.slug}-${section.heading.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
               return <section key={section.heading} id={id}><h2 className="text-2xl font-semibold text-slate-900">{section.heading}</h2><div className="mt-3 space-y-4 leading-8 text-slate-700">{section.content.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div></section>;
             })}
-            <FaqSection faqs={post.faqJson ?? []} title="FAQ" />
+            {shouldRenderFaq ? <FaqSection faqs={post.faqJson ?? []} title="FAQ" /> : null}
             {author ? <AuthorBox author={author} /> : null}
           </div>
           <div className="lg:sticky lg:top-8 lg:self-start"><TableOfContents slug={post.slug} sections={post.sections} headings={articleHeadings} /></div>
