@@ -7,23 +7,23 @@ import { Container } from '@/components/ui/Container';
 import { CATEGORY_EDITORIAL_COPY, withConfiguredShortCategoryCopy } from '@/lib/content/category-copy';
 import { contentRepository } from '@/lib/content/repository';
 import { buildMetadata } from '@/lib/seo/metadata';
-import { siteConfig } from '@/lib/site/config';
 import type { Category } from '@/types/content';
 
 const HOME_TITLE = 'Blog 2Dolist | Guides et conseils sur les activités aériennes et de loisirs';
 const HOME_DESCRIPTION = 'Retrouvez les guides 2Dolist pour préparer un baptême de l’air, un saut en parachute, un vol en hélicoptère, une sortie ULM ou une activité de loisirs en France.';
+const HOME_URL = 'https://blog.2dolist.fr/';
 
 const websiteJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: 'Blog 2Dolist',
-  url: siteConfig.baseUrl,
+  url: HOME_URL,
   inLanguage: 'fr-FR',
   description: HOME_DESCRIPTION
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  return buildMetadata({ title: HOME_TITLE, description: HOME_DESCRIPTION, path: '/', locale: 'fr', follow: true });
+  return buildMetadata({ title: HOME_TITLE, description: HOME_DESCRIPTION, canonicalUrl: HOME_URL, locale: 'fr', follow: true });
 }
 
 const toFallbackCategory = (slug: string): Category | undefined => {
@@ -39,7 +39,11 @@ export default async function HomePage() {
     contentRepository.getRecentPostsByLocale(locale, 6),
     contentRepository.getAllAuthorsByLocale(locale)
   ]);
-  const normalizedCategories = categories.map(withConfiguredShortCategoryCopy);
+  const normalizedCategories = categories.map((category) => {
+    const normalizedCategory = withConfiguredShortCategoryCopy(category);
+    const historicalCategory = CATEGORY_EDITORIAL_COPY.find((item) => item.slug === normalizedCategory.slug);
+    return historicalCategory ? { ...normalizedCategory, path: historicalCategory.path } : normalizedCategory;
+  });
   const getCategory = (slug: string) =>
     normalizedCategories.find((category) => category.slug === slug) ?? toFallbackCategory(slug);
   const aerialCategories = ['avion', 'helicoptere', 'ulm', 'parachutisme', 'parapente', 'montgolfiere', 'planeur']
@@ -97,7 +101,7 @@ export default async function HomePage() {
             <SectionHeading>Derniers articles</SectionHeading>
             <p className="mt-3 max-w-2xl text-slate-600">Nos publications les plus récentes pour préparer votre prochaine sortie et découvrir de nouvelles expériences.</p>
             <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {recentPosts.map((post) => <PostCard key={post.id} post={post} author={authors.find((author) => author.slug === post.authorSlug)} category={normalizedCategories.find((category) => category.slug === post.categorySlug)} />)}
+              {recentPosts.map((post) => <PostCard key={post.id} post={post} author={authors.find((author) => author.slug === post.authorSlug)} category={normalizedCategories.find((category) => category.slug === post.categorySlug)} maxExcerptLength={200} />)}
             </div>
           </Container>
         </section>
