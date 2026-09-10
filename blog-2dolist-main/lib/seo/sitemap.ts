@@ -7,7 +7,7 @@ import type { Locale } from '@/lib/i18n/routing';
 
 const staticPathsByLocale: Record<Locale, string[]> = {
   en: [],
-  fr: ['/', '/articles', '/categories', '/about', '/contact']
+  fr: ['/', '/articles/', '/categories/', '/about/', '/contact/']
 };
 
 export const getLocalizedSitemap = async (locale: Locale): Promise<MetadataRoute.Sitemap> => {
@@ -21,15 +21,19 @@ export const getLocalizedSitemap = async (locale: Locale): Promise<MetadataRoute
     lastModified: new Date()
   }));
 
-  const postPages: MetadataRoute.Sitemap = posts.map((post) => ({
-    url: absoluteUrl(post.path ?? `/articles/${post.slug}`),
-    lastModified: new Date(post.updatedAt ?? post.publishedAt)
-  }));
+  const postPages: MetadataRoute.Sitemap = posts
+    .filter((post) => post.isIndexable !== false)
+    .map((post) => ({
+      url: absoluteUrl(post.path ?? `/articles/${post.slug}/`),
+      lastModified: new Date(post.updatedAt ?? post.publishedAt)
+    }));
 
-  const categoryPages: MetadataRoute.Sitemap = categories.map((category) => ({
-    url: absoluteUrl(category.canonicalUrl ?? getCategoryHref(category, locale)),
-    lastModified: new Date()
-  }));
+  const categoryPages: MetadataRoute.Sitemap = categories
+    .filter((category) => category.isIndexable !== false)
+    .map((category) => ({
+      url: absoluteUrl(category.canonicalUrl ?? getCategoryHref(category, locale)),
+      lastModified: new Date()
+    }));
 
   return [...staticPages, ...postPages, ...categoryPages];
 };
