@@ -55,6 +55,7 @@ interface ApiCategory {
   slug: string;
   name?: string | null;
   title?: string | null;
+  h1?: string | null;
   description?: string | null;
   excerpt?: string | null;
   contentHtml?: string | null;
@@ -259,6 +260,7 @@ const toCategory = (category: ApiCategory): Category => ({
   id: category.id,
   slug: category.slug,
   title: category.name?.trim() || category.title?.trim() || 'Catégorie',
+  h1: category.h1?.trim() || undefined,
   description: category.excerpt?.trim() || category.description?.trim() || 'Découvrez tous les articles de cette catégorie.',
   excerpt: category.excerpt?.trim() || category.description?.trim() || undefined,
   contentHtml: getCategoryHtml(category),
