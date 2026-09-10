@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const toFallbackCategory = (slug: string): Category | undefined => {
   const copy = CATEGORY_EDITORIAL_COPY.find((item) => item.slug === slug);
   if (!copy) return undefined;
-  return { id: `editorial-${slug}`, slug, title: copy.h1, h1: copy.h1, description: copy.excerpt, ...copy };
+  return { id: `editorial-${slug}`, title: copy.h1, description: copy.excerpt, ...copy };
 };
 
 export default async function HomePage() {
