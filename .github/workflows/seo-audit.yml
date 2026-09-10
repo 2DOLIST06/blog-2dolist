@@ -5,7 +5,7 @@ on:
 
 env:
   API_BASE_URL: https://blog-2dolist-api.onrender.com
-  FRONTEND_BASE_URL: https://blog-2dolist-api.onrender.com
+  FRONTEND_BASE_URL: https://blog-2dolist.vercel.app
 
 jobs:
   seo-audit:
