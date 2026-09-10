@@ -9,8 +9,8 @@ export function FaqSection({ faqs, title }: FaqSectionProps) {
   if (faqs.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
-      <h2 className="text-2xl font-semibold text-slate-900">{title}</h2>
+    <section id="faq" aria-labelledby="faq-title" className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+      <h2 id="faq-title" className="text-2xl font-semibold text-slate-900">{title}</h2>
       <div className="mt-5 space-y-4">
         {faqs.map((faq) => (
           <details key={faq.question} className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm" open>
