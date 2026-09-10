@@ -33,7 +33,8 @@ const asArray = (payload, resource) => {
 const normalizePath = (path) => path.startsWith('/') ? path : `/${path}`;
 const absoluteUrl = (src, pageUrl) => new URL(src, pageUrl).href;
 const markerChecks = [
-  ['wp:comments', /wp:comments/i],
+  ['commentaire Gutenberg ouvrant', /<!--\s*wp:/i],
+  ['commentaire Gutenberg fermant', /<!--\s*\/\s*wp:/i],
   ['lorem ipsum', /lorem ipsum/i],
   ['Discover amazing places', /Discover amazing places/i],
   ['Booking', /\bBooking\b/i],
