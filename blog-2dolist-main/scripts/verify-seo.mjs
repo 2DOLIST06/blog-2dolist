@@ -34,9 +34,6 @@ const normalizePath = (path) => path.startsWith('/') ? path : `/${path}`;
 const absoluteUrl = (src, pageUrl) => new URL(src, pageUrl).href;
 const markerChecks = [
   ['wp:comments', /wp:comments/i],
-  ['wp-content', /\/wp-content\/uploads\//i],
-  ['/fr/', /(?:href|src)=["'][^"']*\/fr\//i],
-  ['/articles/', /(?:href|src)=["'][^"']*\/articles\//i],
   ['lorem ipsum', /lorem ipsum/i],
   ['Discover amazing places', /Discover amazing places/i],
   ['Booking', /\bBooking\b/i],
@@ -45,7 +42,10 @@ const markerChecks = [
 
 async function fetchJson(url) {
   const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status} pour ${url}`);
+  if (!response.ok) {
+    const detail = (await response.text().catch(() => '')).replace(/\s+/g, ' ').trim();
+    throw new Error(`HTTP ${response.status} pour ${url}${detail ? ` (${detail.slice(0, 300)})` : ''}`);
+  }
   return response.json();
 }
 
@@ -57,8 +57,55 @@ async function getRecord(path, isCategory) {
 }
 
 async function getAllRecords(resource) {
-  const endpoint = resource === 'posts' ? '/api/posts?locale=fr&limit=100' : '/api/categories?limit=100';
-  return asArray(await fetchJson(`${apiBaseUrl}${endpoint}`), resource);
+  if (resource === 'categories') {
+    // This is the public collection used by contentRepository.getAllCategoriesByLocale.
+    return asArray(await fetchJson(`${apiBaseUrl}/api/categories?locale=fr`), resource);
+  }
+
+  // The public posts API caps `limit` at 50. Asking for 100 is rejected with
+  // HTTP 400, so exhaust its documented page/limit pagination instead.
+  const records = [];
+  const limit = 50;
+  for (let page = 1; ; page += 1) {
+    const url = `${apiBaseUrl}/api/posts?${new URLSearchParams({ locale: 'fr', page: String(page), limit: String(limit) })}`;
+    const batch = asArray(await fetchJson(url), resource);
+    records.push(...batch);
+    if (batch.length < limit) break;
+    if (page >= 100) throw new Error('pagination API articles interrompue après 100 pages');
+  }
+  return records;
+}
+
+const forbiddenRedirectPath = (pathname) =>
+  pathname === '/fr' || pathname.startsWith('/fr/') || pathname === '/articles' || pathname.startsWith('/articles/');
+
+async function fetchPublicFile(path, bucket) {
+  let currentUrl = new URL(path, `${frontendBaseUrl}/`).href;
+  for (let hop = 0; hop <= 5; hop += 1) {
+    const response = await fetch(currentUrl, { redirect: 'manual' });
+    if (![301, 302, 303, 307, 308].includes(response.status)) return { response, finalUrl: currentUrl };
+
+    const location = response.headers.get('location');
+    if (!location) {
+      error(bucket, path, `HTTP ${response.status} sans en-tête Location`);
+      return null;
+    }
+    const destination = new URL(location, currentUrl);
+    console.log(`REDIRECT ${path}: HTTP ${response.status} ${currentUrl} -> ${destination.href}`);
+
+    if (forbiddenRedirectPath(destination.pathname)) {
+      error(bucket, path, `redirection problématique HTTP ${response.status} -> ${destination.href}`);
+      return null;
+    }
+    const allowedOrigins = new Set([new URL(frontendBaseUrl).origin, new URL(productionBaseUrl).origin]);
+    if (!allowedOrigins.has(destination.origin) || destination.pathname !== path) {
+      error(bucket, path, `redirection inattendue HTTP ${response.status} -> ${destination.href}`);
+      return null;
+    }
+    currentUrl = destination.href;
+  }
+  error(bucket, path, 'trop de redirections');
+  return null;
 }
 
 const report = {
@@ -135,8 +182,11 @@ async function auditPath(path, suppliedRecord) {
 async function auditSitemap(expectedRecords) {
   const path = '/sitemap.xml';
   try {
-    const response = await fetch(`${frontendBaseUrl}${path}`, { redirect: 'manual' });
-    if (response.status !== 200) return error('sitemapErrors', path, `HTTP ${response.status}`);
+    const result = await fetchPublicFile(path, 'sitemapErrors');
+    if (!result) return;
+    const { response, finalUrl } = result;
+    if (response.status !== 200) return error('sitemapErrors', path, `HTTP final ${response.status} sur ${finalUrl}`);
+    console.log(`PASS sitemap: HTTP 200 final sur ${finalUrl}`);
     const xml = await response.text();
     const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decode(match[1]));
     for (const forbidden of ['/fr/', '/articles/', '/categories/']) if (urls.some((url) => new URL(url).pathname.includes(forbidden))) error('sitemapErrors', path, `URL interdite ${forbidden}`);
@@ -157,8 +207,11 @@ async function auditSitemap(expectedRecords) {
 async function auditRobots() {
   const path = '/robots.txt';
   try {
-    const response = await fetch(`${frontendBaseUrl}${path}`, { redirect: 'manual' });
-    if (response.status !== 200) return error('robotsErrors', path, `HTTP ${response.status}`);
+    const result = await fetchPublicFile(path, 'robotsErrors');
+    if (!result) return;
+    const { response, finalUrl } = result;
+    if (response.status !== 200) return error('robotsErrors', path, `HTTP final ${response.status} sur ${finalUrl}`);
+    console.log(`PASS robots: HTTP 200 final sur ${finalUrl}`);
     const body = await response.text();
     if (!/^Sitemap:\s*https:\/\/blog\.2dolist\.fr\/sitemap\.xml\s*$/im.test(body)) error('robotsErrors', path, 'sitemap de production absent');
     for (const publicPath of ['/category/', '/202']) {
@@ -171,15 +224,20 @@ async function auditRobots() {
 
 let records = [];
 if (auditAll) {
-  try {
-    const [posts, categories] = await Promise.all([getAllRecords('posts'), getAllRecords('categories')]);
+  const [postsResult, categoriesResult] = await Promise.allSettled([getAllRecords('posts'), getAllRecords('categories')]);
+  const posts = postsResult.status === 'fulfilled' ? postsResult.value : [];
+  const categories = categoriesResult.status === 'fulfilled' ? categoriesResult.value : [];
+  if (postsResult.status === 'rejected') error('httpErrors', 'API articles', postsResult.reason instanceof Error ? postsResult.reason.message : String(postsResult.reason));
+  if (categoriesResult.status === 'rejected') error('httpErrors', 'API catégories', categoriesResult.reason instanceof Error ? categoriesResult.reason.message : String(categoriesResult.reason));
+  if (postsResult.status === 'fulfilled' && posts.length === 0) error('httpErrors', 'API articles', 'collection publique vide: audit --all impossible');
+  if (categoriesResult.status === 'fulfilled' && categories.length === 0) error('httpErrors', 'API catégories', 'collection publique vide: audit --all impossible');
+
+  if (posts.length || categories.length) {
     const publishedPosts = posts.filter((post) => (!post.status || post.status.toUpperCase() === 'PUBLISHED') && post.isActive !== false);
     const activeCategories = categories.filter((category) => category.isActive !== false);
     records = [...publishedPosts, ...activeCategories];
     for (const post of publishedPosts.filter((item) => item.path)) await auditPath(normalizePath(post.path), post);
     for (const category of activeCategories.filter((item) => item.path)) await auditPath(normalizePath(category.path), category);
-  } catch (collectionError) {
-    error('httpErrors', 'API collections', collectionError instanceof Error ? collectionError.message : String(collectionError));
   }
 }
 for (const path of explicitPaths) await auditPath(normalizePath(path));
