@@ -343,6 +343,20 @@ async function fetchCollection<T>(path: string): Promise<T[]> {
   }
 }
 
+async function fetchPaginatedCollection<T>(path: string, pageSize = 50): Promise<T[]> {
+  const items: T[] = [];
+  let page = 1;
+
+  while (true) {
+    const separator = path.includes('?') ? '&' : '?';
+    const batch = await fetchCollection<T>(`${path}${separator}page=${page}&limit=${pageSize}`);
+    items.push(...batch);
+
+    if (batch.length < pageSize) return items;
+    page += 1;
+  }
+}
+
 async function fetchPostByPath(path: string, locale: Locale = DEFAULT_LOCALE): Promise<ApiPost | null> {
   try {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -400,7 +414,7 @@ async function fetchPostBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): P
 
 export const contentRepository = {
   async getAllPostsByLocale(locale: Locale): Promise<Post[]> {
-    const apiPosts = await fetchCollection<ApiPost>(`/api/posts?locale=${locale}&limit=50`);
+    const apiPosts = await fetchPaginatedCollection<ApiPost>(`/api/posts?locale=${locale}`);
     const publishedPosts = apiPosts
       .filter((post) => {
         const status = post.status?.toUpperCase();
