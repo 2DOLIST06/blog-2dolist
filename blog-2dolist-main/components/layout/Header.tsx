@@ -41,7 +41,7 @@ export function Header() {
             <div className="flex items-center gap-3">
               <p className="hidden max-w-[210px] text-right text-xs font-medium leading-5 text-slate-500 lg:block">Vos guides pour prendre<br />de la hauteur</p>
               <span className="hidden h-8 w-px bg-slate-200 lg:block" />
-              <a href="https://www.2dolist.fr/" className="group inline-flex items-center gap-2 rounded-full bg-[#244b6b] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#173a56] sm:px-5 sm:text-sm">
+              <a href="https://www.2dolist.fr/" className="group inline-flex items-center gap-2 rounded-full bg-sky-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-700 sm:px-5 sm:text-sm">
                 Découvrir 2Dolist
                 <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">↗</span>
               </a>
@@ -50,7 +50,7 @@ export function Header() {
         </Container>
       </div>
 
-      <nav aria-label="Activités aériennes" className="bg-[#244b6b] text-white">
+      <nav aria-label="Activités aériennes" className="bg-sky-600 text-white">
         <Container>
           <div className="no-scrollbar flex h-[66px] items-stretch overflow-x-auto md:h-[72px] md:justify-between">
             {aerialActivities.map((activity) => {

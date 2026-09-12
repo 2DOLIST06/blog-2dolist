@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 170" role="img" aria-labelledby="title">
   <title id="title">2Dolist, le blog</title>
-  <g fill="none" stroke="#244b6b" stroke-linecap="round" stroke-linejoin="round">
+  <g fill="none" stroke="#0284c7" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="82" cy="82" r="68" stroke-width="5"/>
     <path d="M41 83c18 4 31 23 41 43 7-43 24-75 51-102" stroke-width="16"/>
   </g>
-  <g fill="#244b6b">
+  <g fill="#0284c7">
     <text x="178" y="91" font-family="Arial, Helvetica, sans-serif" font-size="67" font-weight="800" letter-spacing="8">2DOLIST</text>
     <path d="M195 125h52v3h-52zm275 0h52v3h-52z"/>
     <text x="270" y="140" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="12">LE BLOG</text>
