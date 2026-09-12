@@ -71,6 +71,18 @@ export default async function HomePage() {
         </Container>
       </section>
 
+      {recentPosts.length > 0 ? (
+        <section id="derniers-articles" className="py-16 sm:py-20">
+          <Container>
+            <SectionHeading>Derniers articles</SectionHeading>
+            <p className="mt-3 max-w-2xl text-slate-600">Nos publications les plus récentes pour préparer votre prochaine sortie et découvrir de nouvelles expériences.</p>
+            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {recentPosts.map((post) => <PostCard key={post.id} post={post} author={authors.find((author) => author.slug === post.authorSlug)} category={normalizedCategories.find((category) => category.slug === post.categorySlug)} maxExcerptLength={200} />)}
+            </div>
+          </Container>
+        </section>
+      ) : null}
+
       <section id="activites-aeriennes" className="py-16 sm:py-20">
         <Container>
           <SectionHeading>Activités aériennes</SectionHeading>
@@ -94,18 +106,6 @@ export default async function HomePage() {
           </div>
         </Container>
       </section>
-
-      {recentPosts.length > 0 ? (
-        <section id="derniers-articles" className="py-16 sm:py-20">
-          <Container>
-            <SectionHeading>Derniers articles</SectionHeading>
-            <p className="mt-3 max-w-2xl text-slate-600">Nos publications les plus récentes pour préparer votre prochaine sortie et découvrir de nouvelles expériences.</p>
-            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {recentPosts.map((post) => <PostCard key={post.id} post={post} author={authors.find((author) => author.slug === post.authorSlug)} category={normalizedCategories.find((category) => category.slug === post.categorySlug)} maxExcerptLength={200} />)}
-            </div>
-          </Container>
-        </section>
-      ) : null}
 
       {giftCategory ? (
         <section className="pb-16 sm:pb-20">
