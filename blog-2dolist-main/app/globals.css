@@ -14,6 +14,14 @@ a {
   @apply text-inherit no-underline;
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .rich-content {
   @apply max-w-none text-base leading-8 text-slate-700;
 }
