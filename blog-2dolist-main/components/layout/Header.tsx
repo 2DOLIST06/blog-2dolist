@@ -3,7 +3,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { Container } from '@/components/ui/Container';
+
+const adminHeaderPreferenceKey = 'admin-public-header-hidden';
 
 const aerialActivities = [
   { label: 'Avion', href: '/category/aerien/avion/', icon: 'plane' },
@@ -27,9 +30,63 @@ function ActivityIcon({ type }: { type: (typeof aerialActivities)[number]['icon'
 
 export function Header() {
   const pathname = usePathname() ?? '/';
+  const headerRef = useRef<HTMLElement>(null);
+  const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
+  const isProtectedAdminPage = isAdminPage && pathname !== '/admin/login';
+  const [isAdminHeaderHidden, setIsAdminHeaderHidden] = useState(false);
+  const isHeaderHidden = isProtectedAdminPage && isAdminHeaderHidden;
+
+  useEffect(() => {
+    if (!isProtectedAdminPage) return;
+
+    setIsAdminHeaderHidden(window.localStorage.getItem(adminHeaderPreferenceKey) === 'true');
+  }, [isProtectedAdminPage]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    if (!isProtectedAdminPage || isHeaderHidden) {
+      root.style.setProperty('--admin-sticky-top', '0px');
+      return () => root.style.removeProperty('--admin-sticky-top');
+    }
+
+    const header = headerRef.current;
+    if (!header) return;
+
+    const updateStickyOffset = () => {
+      root.style.setProperty('--admin-sticky-top', `${header.getBoundingClientRect().height}px`);
+    };
+
+    updateStickyOffset();
+    const resizeObserver = new ResizeObserver(updateStickyOffset);
+    resizeObserver.observe(header);
+
+    return () => {
+      resizeObserver.disconnect();
+      root.style.removeProperty('--admin-sticky-top');
+    };
+  }, [isHeaderHidden, isProtectedAdminPage]);
+
+  const toggleAdminHeader = () => {
+    const nextHidden = !isHeaderHidden;
+    const visibleHeaderHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
+
+    document.documentElement.style.setProperty(
+      '--admin-sticky-top',
+      nextHidden ? '0px' : `${visibleHeaderHeight}px`
+    );
+    window.localStorage.setItem(adminHeaderPreferenceKey, String(nextHidden));
+    setIsAdminHeaderHidden(nextHidden);
+  };
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-[0_8px_30px_rgba(15,42,62,0.10)]">
+    <>
+      <header
+        ref={headerRef}
+        data-admin-measured-header
+        hidden={isHeaderHidden}
+        className="sticky top-0 z-50 bg-white shadow-[0_8px_30px_rgba(15,42,62,0.10)]"
+      >
       <div className="relative overflow-hidden border-b border-slate-100">
         <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/3 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.13),transparent_65%)] lg:block" />
         <Container>
@@ -66,6 +123,19 @@ export function Header() {
           </div>
         </Container>
       </nav>
-    </header>
+      </header>
+      {isProtectedAdminPage ? (
+        <button
+          type="button"
+          onClick={toggleAdminHeader}
+          aria-label={isHeaderHidden ? 'Afficher le header public' : 'Masquer le header public'}
+          aria-pressed={isHeaderHidden}
+          title={isHeaderHidden ? 'Afficher le header public' : 'Masquer le header public'}
+          className="fixed right-2 top-2 z-[60] inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white/95 text-lg font-bold text-slate-700 shadow-md transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
+        >
+          <span aria-hidden="true">{isHeaderHidden ? '⌄' : '⌃'}</span>
+        </button>
+      ) : null}
+    </>
   );
 }

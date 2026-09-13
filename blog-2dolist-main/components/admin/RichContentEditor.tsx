@@ -628,7 +628,8 @@ export function RichContentEditor({
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-950 shadow-xl shadow-black/20">
       <div
-        className="sticky top-24 z-30 flex flex-wrap items-center gap-2 rounded-t-xl border-b border-slate-700 bg-slate-900/95 p-3 shadow-lg shadow-slate-950/20 backdrop-blur"
+        className="sticky z-30 flex flex-wrap items-center gap-2 rounded-t-xl border-b border-slate-700 bg-slate-900/95 p-3 shadow-lg shadow-slate-950/20 backdrop-blur"
+        style={{ top: 'var(--admin-sticky-top, 0px)' }}
         onMouseDown={handleToolbarMouseDown}
       >
         <button type="button" className={buttonClass(isBlock('p'))} onClick={() => exec('formatBlock', 'P')}>Paragraphe</button>
