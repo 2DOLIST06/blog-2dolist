@@ -3,7 +3,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Container } from '@/components/ui/Container';
+
+const ADMIN_HEADER_STORAGE_KEY = 'admin-public-header-collapsed';
+const ADMIN_STICKY_TOP_PROPERTY = '--admin-sticky-top';
 
 const aerialActivities = [
   { label: 'Avion', href: '/category/aerien/avion/', icon: 'plane' },
@@ -27,9 +31,55 @@ function ActivityIcon({ type }: { type: (typeof aerialActivities)[number]['icon'
 
 export function Header() {
   const pathname = usePathname() ?? '/';
+  const headerRef = useRef<HTMLElement>(null);
+  const isProtectedAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/admin/login');
+  const [isAdminHeaderCollapsed, setIsAdminHeaderCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (!isProtectedAdminPage) return;
+
+    setIsAdminHeaderCollapsed(window.localStorage.getItem(ADMIN_HEADER_STORAGE_KEY) === 'true');
+  }, [isProtectedAdminPage]);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+
+    if (!isProtectedAdminPage || isAdminHeaderCollapsed) {
+      root.style.setProperty(ADMIN_STICKY_TOP_PROPERTY, '0px');
+      return () => root.style.removeProperty(ADMIN_STICKY_TOP_PROPERTY);
+    }
+
+    const header = headerRef.current;
+    if (!header) return;
+
+    const updateStickyTop = () => {
+      root.style.setProperty(ADMIN_STICKY_TOP_PROPERTY, `${header.getBoundingClientRect().height}px`);
+    };
+
+    updateStickyTop();
+    const resizeObserver = new ResizeObserver(updateStickyTop);
+    resizeObserver.observe(header);
+
+    return () => {
+      resizeObserver.disconnect();
+      root.style.removeProperty(ADMIN_STICKY_TOP_PROPERTY);
+    };
+  }, [isAdminHeaderCollapsed, isProtectedAdminPage]);
+
+  const toggleAdminHeader = () => {
+    const nextValue = !isAdminHeaderCollapsed;
+    document.documentElement.style.setProperty(
+      ADMIN_STICKY_TOP_PROPERTY,
+      nextValue ? '0px' : `${headerRef.current?.getBoundingClientRect().height ?? 0}px`
+    );
+    window.localStorage.setItem(ADMIN_HEADER_STORAGE_KEY, String(nextValue));
+    setIsAdminHeaderCollapsed(nextValue);
+  };
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-[0_8px_30px_rgba(15,42,62,0.10)]">
+    <>
+      {(!isProtectedAdminPage || !isAdminHeaderCollapsed) && (
+        <header ref={headerRef} data-public-header className="sticky top-0 z-50 bg-white shadow-[0_8px_30px_rgba(15,42,62,0.10)]">
       <div className="relative overflow-hidden border-b border-slate-100">
         <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/3 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.13),transparent_65%)] lg:block" />
         <Container>
@@ -66,6 +116,21 @@ export function Header() {
           </div>
         </Container>
       </nav>
-    </header>
+        </header>
+      )}
+
+      {isProtectedAdminPage && (
+        <button
+          type="button"
+          onClick={toggleAdminHeader}
+          aria-label={isAdminHeaderCollapsed ? 'Afficher le header public' : 'Masquer le header public'}
+          aria-pressed={isAdminHeaderCollapsed}
+          title={isAdminHeaderCollapsed ? 'Afficher le header public' : 'Masquer le header public'}
+          className="fixed right-2 top-2 z-[60] inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-600 bg-slate-950/90 text-lg font-bold text-white shadow-lg backdrop-blur transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 sm:right-4 sm:top-4"
+        >
+          <span aria-hidden="true">{isAdminHeaderCollapsed ? '↓' : '↑'}</span>
+        </button>
+      )}
+    </>
   );
 }
