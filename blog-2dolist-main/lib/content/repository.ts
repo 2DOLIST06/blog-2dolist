@@ -78,6 +78,11 @@ interface ApiAuthor {
   avatar?: ApiMedia | null;
 }
 
+export type ContentFetchOptions = { cache?: RequestCache };
+
+const collectionFetchOptions = (options?: ContentFetchOptions): RequestInit =>
+  options?.cache === 'no-store' ? { cache: 'no-store' } : { next: { revalidate: 60 } };
+
 const getPublicApiOrigin = () => {
   try {
     return new URL(getPublicApiBaseUrl()).origin;
@@ -312,13 +317,18 @@ const toAuthor = (author: ApiAuthor): Author => ({
   avatar: author.avatar?.url?.trim() ? toAbsoluteApiAssetUrl(author.avatar.url.trim()) : siteConfig.defaultOgImage
 });
 
-async function fetchCollection<T>(path: string): Promise<T[]> {
-  try {
-    const response = await fetch(buildPublicApiUrl(path), {
-      next: { revalidate: 60 }
-    });
+type CollectionPage<T> = {
+  items: T[];
+  page?: number;
+  totalPages?: number;
+  hasNextPage?: boolean;
+};
 
-    if (!response.ok) return [];
+async function fetchCollectionPage<T>(path: string, options?: ContentFetchOptions): Promise<CollectionPage<T>> {
+  try {
+    const response = await fetch(buildPublicApiUrl(path), collectionFetchOptions(options));
+
+    if (!response.ok) return { items: [] };
 
     const payload = (await response.json().catch(() => ({}))) as {
       data?: unknown;
@@ -327,36 +337,66 @@ async function fetchCollection<T>(path: string): Promise<T[]> {
       posts?: unknown;
       categories?: unknown;
       authors?: unknown;
+      page?: unknown;
+      totalPages?: unknown;
+      hasNextPage?: unknown;
     };
 
+    let items: T[] = [];
     const candidates = [payload.data, payload.docs, payload.items, payload.posts, payload.categories, payload.authors];
     for (const candidate of candidates) {
-      if (Array.isArray(candidate)) return candidate as T[];
+      if (Array.isArray(candidate)) { items = candidate as T[]; break; }
       if (candidate && typeof candidate === 'object') {
-        const nested = candidate as { docs?: unknown; items?: unknown; posts?: unknown; categories?: unknown; authors?: unknown };
+        const nested = candidate as {
+          docs?: unknown; items?: unknown; posts?: unknown; categories?: unknown; authors?: unknown;
+          page?: unknown; totalPages?: unknown; hasNextPage?: unknown;
+        };
         const nestedCandidates = [nested.docs, nested.items, nested.posts, nested.categories, nested.authors];
         for (const nestedCandidate of nestedCandidates) {
-          if (Array.isArray(nestedCandidate)) return nestedCandidate as T[];
+          if (Array.isArray(nestedCandidate)) { items = nestedCandidate as T[]; break; }
+        }
+        if (items.length || nestedCandidates.some(Array.isArray)) {
+          return {
+            items,
+            page: typeof nested.page === 'number' ? nested.page : typeof payload.page === 'number' ? payload.page : undefined,
+            totalPages: typeof nested.totalPages === 'number' ? nested.totalPages : typeof payload.totalPages === 'number' ? payload.totalPages : undefined,
+            hasNextPage: typeof nested.hasNextPage === 'boolean' ? nested.hasNextPage : typeof payload.hasNextPage === 'boolean' ? payload.hasNextPage : undefined
+          };
         }
       }
     }
 
-    return [];
+    return {
+      items,
+      page: typeof payload.page === 'number' ? payload.page : undefined,
+      totalPages: typeof payload.totalPages === 'number' ? payload.totalPages : undefined,
+      hasNextPage: typeof payload.hasNextPage === 'boolean' ? payload.hasNextPage : undefined
+    };
   } catch {
-    return [];
+    return { items: [] };
   }
 }
 
-async function fetchPaginatedCollection<T>(path: string, pageSize = 50): Promise<T[]> {
+async function fetchCollection<T>(path: string, options?: ContentFetchOptions): Promise<T[]> {
+  return (await fetchCollectionPage<T>(path, options)).items;
+}
+
+async function fetchPaginatedCollection<T>(path: string, pageSize = 50, options?: ContentFetchOptions): Promise<T[]> {
   const items: T[] = [];
   let page = 1;
 
   while (true) {
     const separator = path.includes('?') ? '&' : '?';
-    const batch = await fetchCollection<T>(`${path}${separator}page=${page}&limit=${pageSize}`);
-    items.push(...batch);
+    const result = await fetchCollectionPage<T>(`${path}${separator}page=${page}&limit=${pageSize}`, options);
+    items.push(...result.items);
 
-    if (batch.length < pageSize) return items;
+    if (typeof result.totalPages === 'number') {
+      if ((result.page ?? page) >= result.totalPages) return items;
+    } else if (typeof result.hasNextPage === 'boolean') {
+      if (!result.hasNextPage) return items;
+    } else if (result.items.length < pageSize) {
+      return items;
+    }
     page += 1;
   }
 }
@@ -417,8 +457,8 @@ async function fetchPostBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): P
 }
 
 export const contentRepository = {
-  async getAllPostsByLocale(locale: Locale): Promise<Post[]> {
-    const apiPosts = await fetchPaginatedCollection<ApiPost>(`/api/posts?locale=${locale}`);
+  async getAllPostsByLocale(locale: Locale, options?: ContentFetchOptions): Promise<Post[]> {
+    const apiPosts = await fetchPaginatedCollection<ApiPost>(`/api/posts?locale=${locale}`, 50, options);
     const publishedPosts = apiPosts
       .filter((post) => {
         const status = post.status?.toUpperCase();
@@ -458,8 +498,8 @@ export const contentRepository = {
   async getPostBySlug(slug: string): Promise<Post | undefined> {
     return this.getPostBySlugAndLocale(slug, DEFAULT_LOCALE);
   },
-  async getAllCategoriesByLocale(locale: Locale): Promise<Category[]> {
-    const apiCategories = await fetchCollection<ApiCategory>(`/api/categories?locale=${locale}`);
+  async getAllCategoriesByLocale(locale: Locale, options?: ContentFetchOptions): Promise<Category[]> {
+    const apiCategories = await fetchPaginatedCollection<ApiCategory>(`/api/categories?locale=${locale}`, 50, options);
     return apiCategories.filter((category) => category.isActive !== false).map(toCategory);
   },
   async getAllCategories(): Promise<Category[]> {

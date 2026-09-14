@@ -1,74 +1,29 @@
 import 'server-only';
 
-import { prisma } from '@/lib/db';
 import { getLocalizedSitemap } from '@/lib/seo/sitemap';
 import { locales } from '@/lib/i18n/routing';
 import { siteConfig } from '@/lib/constants';
-import { calculateIndexNowPages, deduplicateSitemapEntries, isValidIndexNowKey, processIndexNowBatches, type IndexNowPage } from './core';
 import {
-  readIndexNowHistory,
-  saveSuccessfulIndexNowSubmissions,
-  type IndexNowSubmissionDatabase,
-  type IndexNowSubmissionRecord
-} from './history';
+  deduplicateSitemapUrls,
+  isValidIndexNowKey,
+  processIndexNowBatches,
+  type IndexNowBatchResult
+} from './core';
 
 const INDEXNOW_ENDPOINT = 'https://www.bing.com/indexnow';
 const MAX_URLS_PER_BATCH = 10_000;
-
-const indexNowHistoryDatabase: IndexNowSubmissionDatabase = {
-  findMany: async () => prisma.$queryRaw<IndexNowSubmissionRecord[]>`
-    SELECT
-      url,
-      content_last_modified_at AS "contentLastModifiedAt",
-      last_submitted_at AS "lastSubmittedAt"
-    FROM indexnow_history
-  `,
-  upsert: ({ create }) => prisma.$executeRaw`
-    INSERT INTO indexnow_history (
-      url,
-      content_last_modified_at,
-      last_submitted_at,
-      created_at,
-      updated_at
-    )
-    VALUES (
-      ${create.url},
-      ${create.contentLastModifiedAt},
-      NOW(),
-      NOW(),
-      NOW()
-    )
-    ON CONFLICT (url)
-    DO UPDATE SET
-      content_last_modified_at = EXCLUDED.content_last_modified_at,
-      last_submitted_at = NOW(),
-      updated_at = NOW()
-  `
-};
 
 export const getIndexNowKey = () => {
   const key = (process.env.INDEXNOW_KEY || process.env.BING_INDEXNOW_KEY || '').trim();
   return isValidIndexNowKey(key) ? key : null;
 };
 
-export async function readIndexNowStore() {
-  try {
-    return { submissions: await readIndexNowHistory(indexNowHistoryDatabase) };
-  } catch {
-    throw new Error('Impossible de lire l’historique IndexNow.');
-  }
-}
-
-async function mergeSuccessfulSubmissions(pages: IndexNowPage[], submittedAt: string) {
-  await saveSuccessfulIndexNowSubmissions(indexNowHistoryDatabase, pages, new Date(submittedAt));
-}
-
-export async function getIndexNowPages() {
+export async function getIndexNowUrls() {
   const origin = new URL(siteConfig.baseUrl).origin;
-  const sitemapEntries = (await Promise.all(locales.map(getLocalizedSitemap))).flat();
-  const entries = deduplicateSitemapEntries(sitemapEntries, origin);
-  const store = await readIndexNowStore();
-  return calculateIndexNowPages(entries, store.submissions);
+  const sitemapEntries = (await Promise.all(
+    locales.map((locale) => getLocalizedSitemap(locale, { cache: 'no-store' }))
+  )).flat();
+  return deduplicateSitemapUrls(sitemapEntries, origin);
 }
 
 async function verifyKeyFile(key: string, keyLocation: string) {
@@ -84,36 +39,53 @@ async function verifyKeyFile(key: string, keyLocation: string) {
 }
 
 export class IndexNowSubmissionError extends Error {
-  constructor(message: string, public readonly status: number, public readonly submittedUrls: string[]) {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly submittedUrls: string[],
+    public readonly batches: IndexNowBatchResult[] = []
+  ) {
     super(message);
   }
 }
 
-export async function submitIndexNowPages(pages: IndexNowPage[]) {
+export async function submitIndexNowUrls(urls: string[]) {
   const key = getIndexNowKey();
   if (!key) throw new IndexNowSubmissionError('La clé IndexNow serveur est absente ou invalide.', 503, []);
-  if (!pages.length) throw new IndexNowSubmissionError('Aucune URL autorisée à envoyer.', 400, []);
+  if (!urls.length) throw new IndexNowSubmissionError('Aucune URL autorisée à envoyer.', 400, []);
 
   const configuredUrl = new URL(siteConfig.baseUrl);
   const keyLocation = new URL(`/${key}.txt`, configuredUrl).toString();
   await verifyKeyFile(key, keyLocation);
 
-  return processIndexNowBatches(pages, MAX_URLS_PER_BATCH, async (batch, submittedUrls) => {
-    let response: Response;
-    try {
-      response = await fetch(INDEXNOW_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: JSON.stringify({ host: configuredUrl.host, key, keyLocation, urlList: batch.map((page) => page.url) }),
-        signal: AbortSignal.timeout(20_000)
-      });
-    } catch {
-      throw new IndexNowSubmissionError('IndexNow est actuellement inaccessible.', 502, submittedUrls);
-    }
-    if (!response.ok) {
-      throw new IndexNowSubmissionError(`IndexNow a refusé un lot (statut HTTP ${response.status}).`, 502, submittedUrls);
-    }
-  }, async (batch) => {
-    await mergeSuccessfulSubmissions(batch, new Date().toISOString());
-  });
+  const completedBatches: IndexNowBatchResult[] = [];
+  try {
+    return await processIndexNowBatches(urls, MAX_URLS_PER_BATCH, async (batch, submittedUrls, batchNumber) => {
+      let response: Response;
+      try {
+        response = await fetch(INDEXNOW_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          body: JSON.stringify({ host: configuredUrl.host, key, keyLocation, urlList: batch }),
+          cache: 'no-store',
+          signal: AbortSignal.timeout(20_000)
+        });
+      } catch {
+        throw new IndexNowSubmissionError('IndexNow est actuellement inaccessible.', 502, submittedUrls, completedBatches);
+      }
+      if (!response.ok) {
+        throw new IndexNowSubmissionError(
+          `IndexNow a refusé le lot ${batchNumber} (statut HTTP ${response.status}).`,
+          502,
+          submittedUrls,
+          completedBatches
+        );
+      }
+      completedBatches.push({ batch: batchNumber, urlCount: batch.length, status: response.status });
+      return response.status;
+    });
+  } catch (error) {
+    if (error instanceof IndexNowSubmissionError) throw error;
+    throw new IndexNowSubmissionError('Envoi IndexNow impossible.', 502, [], completedBatches);
+  }
 }
