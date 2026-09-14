@@ -3,15 +3,16 @@ import Link from 'next/link';
 import { AuthorBox } from '@/components/blog/AuthorBox';
 import { FaqSection } from '@/components/blog/FaqSection';
 import { PostCard } from '@/components/blog/PostCard';
-import { RichContentRenderer } from '@/components/blog/RichContentRenderer';
+import { ArticleRichContentRenderer, sanitizeArticleHtml } from '@/components/blog/RichContentRenderer';
 import { TableOfContents } from '@/components/blog/TableOfContents';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Container } from '@/components/ui/Container';
 import { extractHeadingsFromHtml } from '@/lib/content/headings';
 import { formatDate } from '@/lib/content/presenters';
 import { getCategoryHref, getPostHref } from '@/lib/content/urls';
-import { absoluteUrl, getArticlesPath, getHomePath, type Locale } from '@/lib/i18n/routing';
-import { blogPostingJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld';
+import { absoluteUrl, getArticlesPath, getAuthorPath, getHomePath } from '@/lib/i18n/routing';
+import { blogPostingJsonLd, breadcrumbJsonLd, faqPageJsonLd } from '@/lib/seo/jsonld';
+import { withTrailingSlash } from '@/lib/seo/post-metadata';
 import type { Author, Category, Post, RelatedPostSummary } from '@/types/content';
 
 interface ArticlePageViewProps {
@@ -55,9 +56,11 @@ const contentAlreadyContainsFaq = (contentHtml: string | undefined, faqs: Post['
 
 export function ArticlePageView({ post, author, category, relatedPosts, canEdit = false }: ArticlePageViewProps) {
   const labels = labelsByLocale.fr;
-  const articleHeadings = extractHeadingsFromHtml(post.contentHtml);
+  const cleanedContentHtml = sanitizeArticleHtml(post.contentHtml);
+  const articleHeadings = extractHeadingsFromHtml(cleanedContentHtml);
   const articlePath = getPostHref(post, post.locale);
-  const articleUrl = post.canonicalUrl ?? absoluteUrl(articlePath);
+  const articleUrl = withTrailingSlash(post.canonicalUrl ?? absoluteUrl(articlePath));
+  const articleH1 = post.h1 || post.title;
   const authorName = author?.name ?? labels.fallbackAuthor;
   const categoryHref = category ? getCategoryHref(category, post.locale) : undefined;
   const shouldRenderFaq = !contentAlreadyContainsFaq(post.contentHtml, post.faqJson);
@@ -70,6 +73,7 @@ export function ArticlePageView({ post, author, category, relatedPosts, canEdit 
     datePublished: post.publishedAt,
     dateModified: post.updatedAt,
     authorName,
+    authorUrl: author?.slug ? absoluteUrl(getAuthorPath(post.locale, author.slug)) : undefined,
     category: category?.title ?? labels.fallbackCategory,
     locale: post.locale,
     url: articleUrl
@@ -78,8 +82,9 @@ export function ArticlePageView({ post, author, category, relatedPosts, canEdit 
   const breadcrumbs = breadcrumbJsonLd([
     { name: labels.home, path: getHomePath(post.locale) },
     ...(categoryHref && category ? [{ name: category.title, path: categoryHref }] : [{ name: labels.articles, path: getArticlesPath(post.locale) }]),
-    { name: post.title, path: articlePath }
+    { name: post.title, path: articleUrl }
   ]);
+  const faqJsonLd = post.faqJson?.length ? faqPageJsonLd(post.faqJson) : undefined;
 
   return (
     <Container>
@@ -88,7 +93,7 @@ export function ArticlePageView({ post, author, category, relatedPosts, canEdit 
 
 
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-slate-900">{post.title}</h1>
+          <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-slate-900">{articleH1}</h1>
           {canEdit ? (
             <Link
               href={`/admin/posts/${post.id}/edit`}
@@ -105,17 +110,17 @@ export function ArticlePageView({ post, author, category, relatedPosts, canEdit 
         </div>
 
         <div className="relative mt-8 h-72 overflow-hidden rounded-2xl md:h-[420px]">
-          <Image src={post.coverImage} alt={post.title} fill className="object-cover" priority />
+          <Image src={post.coverImage} alt={post.coverImageAlt || articleH1} fill className="object-cover" priority />
         </div>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div className="space-y-8">
             {post.chapoHtml ? (
               <div className="rounded-2xl border-l-4 border-amber-400 bg-amber-50 px-6 py-5 text-lg leading-8 text-slate-800">
-                <RichContentRenderer contentHtml={post.chapoHtml} />
+                <ArticleRichContentRenderer contentHtml={post.chapoHtml} />
               </div>
             ) : null}
-            {post.contentHtml ? <RichContentRenderer contentHtml={post.contentHtml} /> : post.sections.map((section) => {
+            {post.contentHtml ? <ArticleRichContentRenderer contentHtml={cleanedContentHtml} /> : post.sections.map((section) => {
               const id = `${post.slug}-${section.heading.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
               return <section key={section.heading} id={id}><h2 className="text-2xl font-semibold text-slate-900">{section.heading}</h2><div className="mt-3 space-y-4 leading-8 text-slate-700">{section.content.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div></section>;
             })}
@@ -129,6 +134,7 @@ export function ArticlePageView({ post, author, category, relatedPosts, canEdit 
 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(postJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
+        {faqJsonLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} /> : null}
       </article>
     </Container>
   );

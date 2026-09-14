@@ -57,12 +57,14 @@ export interface Post {
   id: string;
   slug: string;
   title: string;
+  h1?: string;
   excerpt: string;
   metaTitle?: string;
   metaDescription?: string;
   isIndexable?: boolean;
   description: string;
   coverImage: string;
+  coverImageAlt?: string;
   publishedAt: string;
   updatedAt?: string;
   readingMinutes: number;

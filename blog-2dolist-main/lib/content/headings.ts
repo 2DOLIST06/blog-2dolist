@@ -5,7 +5,7 @@ export interface ArticleHeading {
 }
 
 const headingTagRegex = /<h([1-6])\b([^>]*)>([\s\S]*?)<\/h\1>/gi;
-const idAttributeRegex = /\sid=(['"])(.*?)\1/i;
+const idAttributeRegex = /\s+id=(['"])(.*?)\1/i;
 const tagRegex = /<[^>]+>/g;
 
 function decodeHtmlEntities(value: string) {
@@ -44,19 +44,30 @@ export function extractHeadingsFromHtml(contentHtml?: string | null): ArticleHea
 
   for (const match of (contentHtml ?? '').matchAll(headingTagRegex)) {
     const level = Number(match[1]);
-    const attributes = match[2] ?? '';
     const innerHtml = match[3] ?? '';
     const text = getHeadingText(innerHtml);
 
     if (!text) continue;
 
-    const existingId = attributes.match(idAttributeRegex)?.[2];
-    const id = existingId || getUniqueId(slugifyHeading(text), usedIds);
-    if (existingId) usedIds.set(existingId, (usedIds.get(existingId) ?? 0) + 1);
+    const id = getUniqueId(slugifyHeading(text), usedIds);
     headings.push({ id, text, level });
   }
 
   return headings;
+}
+
+export function addHeadingIds(contentHtml?: string | null) {
+  const usedIds = new Map<string, number>();
+
+  return (contentHtml ?? '').replace(headingTagRegex, (fullMatch, level: string, attributes: string, innerHtml: string) => {
+    const text = getHeadingText(innerHtml);
+
+    if (!text) return fullMatch;
+
+    const id = getUniqueId(slugifyHeading(text), usedIds);
+    const withoutOldId = attributes.replace(idAttributeRegex, '');
+    return `<h${level}${withoutOldId} id="${id}">${innerHtml}</h${level}>`;
+  });
 }
 
 export function addMissingHeadingIds(contentHtml?: string | null) {
@@ -64,7 +75,6 @@ export function addMissingHeadingIds(contentHtml?: string | null) {
 
   return (contentHtml ?? '').replace(headingTagRegex, (fullMatch, level: string, attributes: string, innerHtml: string) => {
     const text = getHeadingText(innerHtml);
-
     if (!text) return fullMatch;
 
     const existingId = attributes.match(idAttributeRegex)?.[2];
@@ -73,7 +83,6 @@ export function addMissingHeadingIds(contentHtml?: string | null) {
       return fullMatch;
     }
 
-    const id = getUniqueId(slugifyHeading(text), usedIds);
-    return `<h${level}${attributes} id="${id}">${innerHtml}</h${level}>`;
+    return `<h${level}${attributes} id="${getUniqueId(slugifyHeading(text), usedIds)}">${innerHtml}</h${level}>`;
   });
 }
