@@ -35,6 +35,8 @@ interface ApiPost {
   readingTimeMinutes?: number | null;
   coverImage?: ApiMedia | null;
   heroImageUrl?: string | null;
+  heroImageAlt?: string | null;
+  coverImageAlt?: string | null;
   category?: { slug?: string | null } | null;
   categorySlug?: string | null;
   author?: { slug?: string | null } | null;
@@ -200,7 +202,8 @@ const toPost = (apiPost: ApiPost): Post => {
   return ({
   id: apiPost.id,
   slug: apiPost.slug,
-  title: apiPost.h1?.trim() || apiPost.title,
+  title: apiPost.title,
+  h1: apiPost.h1?.trim() || undefined,
   excerpt: getPostExcerpt(apiPost),
   metaTitle: apiPost.metaTitle?.trim() || undefined,
   metaDescription: apiPost.metaDescription?.trim() || undefined,
@@ -215,6 +218,7 @@ const toPost = (apiPost: ApiPost): Post => {
       apiPost.heroImageUrl?.trim() ||
       siteConfig.defaultOgImage
   ),
+  coverImageAlt: apiPost.coverImageAlt?.trim() || apiPost.heroImageAlt?.trim() || undefined,
   publishedAt: apiPost.publishedAt || apiPost.updatedAt || new Date().toISOString(),
   updatedAt: apiPost.updatedAt || undefined,
   readingMinutes: apiPost.readingTimeMinutes ?? 6,
