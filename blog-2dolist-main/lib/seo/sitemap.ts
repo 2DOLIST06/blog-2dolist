@@ -16,8 +16,7 @@ export const getLocalizedSitemap = async (locale: Locale): Promise<MetadataRoute
   ]);
 
   const staticPages: MetadataRoute.Sitemap = staticPathsByLocale[locale].map((path) => ({
-    url: absoluteUrl(path),
-    lastModified: new Date()
+    url: absoluteUrl(path)
   }));
 
   const postPages: MetadataRoute.Sitemap = posts
@@ -30,8 +29,7 @@ export const getLocalizedSitemap = async (locale: Locale): Promise<MetadataRoute
   const categoryPages: MetadataRoute.Sitemap = categories
     .filter((category) => category.isIndexable !== false && category.path)
     .map((category) => ({
-      url: absoluteUrl(category.path!),
-      lastModified: new Date()
+      url: absoluteUrl(category.path!)
     }));
 
   return [...staticPages, ...postPages, ...categoryPages];

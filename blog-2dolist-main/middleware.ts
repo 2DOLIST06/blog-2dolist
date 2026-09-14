@@ -2,6 +2,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getPathLocale, stripLocalePrefix } from '@/lib/i18n/routing';
 
 export function middleware(request: NextRequest) {
+  const keyFileMatch = request.nextUrl.pathname.match(/^\/([^/]+\.txt)$/);
+  if (keyFileMatch && !['robots.txt'].includes(keyFileMatch[1])) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/indexnow-key/${encodeURIComponent(keyFileMatch[1])}`;
+    return NextResponse.rewrite(url);
+  }
+
   if (request.nextUrl.pathname === '/fr' || request.nextUrl.pathname.startsWith('/fr/')) {
     const url = request.nextUrl.clone();
     url.pathname = stripLocalePrefix(request.nextUrl.pathname);

@@ -14,7 +14,8 @@
     "seo:audit": "node scripts/verify-seo.mjs --all",
     "content:seed-categories": "node scripts/seed-category-editorial-content.mjs",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types tests/*.test.ts"
   },
   "dependencies": {
     "@next/third-parties": "15.5.9",
