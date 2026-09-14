@@ -6,6 +6,8 @@ import { sanitizeArticleHtml } from '../lib/content/article-html.ts';
 
 const articleSource = readFileSync(new URL('../components/blog/ArticlePageView.tsx', import.meta.url), 'utf8');
 const metadataSource = readFileSync(new URL('../lib/seo/post-metadata.ts', import.meta.url), 'utf8');
+const catchAllPageSource = readFileSync(new URL('../app/[...path]/page.tsx', import.meta.url), 'utf8');
+const legacyArticlePageSource = readFileSync(new URL('../app/blog/[slug]/page.tsx', import.meta.url), 'utf8');
 
 test('nettoie le HTML article tout en conservant son contenu sémantique', () => {
   const input = '<p><br></p><div><br /></div><p style="--tw-space-y-reverse: 0"><span style="font-size: 1rem;">Texte&nbsp;<strong>fort</strong></span></p><img src="x.jpg" alt="X" width="961" height="640" style="width: 961px; height: auto;"><ul><li>Lien <a href="/test">test</a></li></ul>';
@@ -32,6 +34,14 @@ test('le renderer article garantit un H1 éditorial et les trois JSON-LD attendu
   assert.match(articleSource, /breadcrumbJsonLd/);
   assert.match(articleSource, /post\.faqJson\?\.length \? faqPageJsonLd/);
   assert.match(articleSource, /post\.coverImageAlt \|\| articleH1/);
+});
+
+test('affiche les raccourcis de modification sur les articles et rubriques pour les admins', () => {
+  assert.match(articleSource, /PublicEditButton/);
+  assert.match(articleSource, /admin\/posts\/\$\{post\.id\}\/edit/);
+  assert.match(catchAllPageSource, /hasAdminSession\(\)/);
+  assert.match(catchAllPageSource, /admin\/categories\/\$\{category\.id\}/);
+  assert.match(legacyArticlePageSource, /hasAdminSession\(\)/);
 });
 
 test('les métadonnées article omettent keywords, normalisent le canonical et bornent modifiedTime', () => {

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { permanentRedirect } from 'next/navigation';
 import { ArticlePageView } from '@/components/blog/ArticlePageView';
+import { hasAdminSession } from '@/lib/admin/auth';
 import { contentRepository } from '@/lib/content/repository';
 import { siteConfig } from '@/lib/site/config';
 import { buildMissingPostMetadata, buildPostMetadata } from '@/lib/seo/post-metadata';
@@ -18,11 +19,12 @@ export default async function LegacyBlogPostPage({ params }: { params: Promise<{
 
   if (!post) permanentRedirect(`/articles/${slug}`);
 
-  const [author, category, relatedPosts] = await Promise.all([
+  const [author, category, relatedPosts, canEdit] = await Promise.all([
     contentRepository.getAuthorBySlugAndLocale(post.authorSlug, post.locale),
     contentRepository.getCategoryBySlugAndLocale(post.categorySlug, post.locale),
-    contentRepository.getRelatedPosts(post, 3)
+    contentRepository.getRelatedPosts(post, 3),
+    hasAdminSession()
   ]);
 
-  return <ArticlePageView post={post} author={author} category={category} relatedPosts={relatedPosts} />;
+  return <ArticlePageView post={post} author={author} category={category} relatedPosts={relatedPosts} canEdit={canEdit} />;
 }
