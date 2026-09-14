@@ -2,24 +2,28 @@ import type { IndexNowHistory, IndexNowPage } from './core';
 
 export type IndexNowSubmissionRecord = {
   url: string;
-  lastModified: string | null;
-  submittedAt: Date;
+  contentLastModifiedAt: Date | null;
+  lastSubmittedAt: Date;
 };
 
 export type IndexNowSubmissionDatabase = {
-  findMany(): Promise<IndexNowSubmissionRecord[]>;
+  findMany(args: {
+    select: { url: true; contentLastModifiedAt: true; lastSubmittedAt: true };
+  }): Promise<IndexNowSubmissionRecord[]>;
   upsert(args: {
     where: { url: string };
-    create: IndexNowSubmissionRecord;
-    update: Omit<IndexNowSubmissionRecord, 'url'>;
+    create: { url: string; contentLastModifiedAt: Date | null; lastSubmittedAt: Date };
+    update: { contentLastModifiedAt: Date | null; lastSubmittedAt: Date };
   }): Promise<unknown>;
 };
 
 export async function readIndexNowHistory(database: IndexNowSubmissionDatabase): Promise<IndexNowHistory> {
-  const records = await database.findMany();
+  const records = await database.findMany({
+    select: { url: true, contentLastModifiedAt: true, lastSubmittedAt: true }
+  });
   return Object.fromEntries(records.map((record) => [record.url, {
-    lastModified: record.lastModified,
-    submittedAt: record.submittedAt.toISOString()
+    lastModified: record.contentLastModifiedAt?.toISOString() ?? null,
+    submittedAt: record.lastSubmittedAt.toISOString()
   }]));
 }
 
@@ -30,7 +34,14 @@ export async function saveSuccessfulIndexNowSubmissions(
 ) {
   await Promise.all(pages.map((page) => database.upsert({
     where: { url: page.url },
-    create: { url: page.url, lastModified: page.lastModified, submittedAt },
-    update: { lastModified: page.lastModified, submittedAt }
+    create: {
+      url: page.url,
+      contentLastModifiedAt: page.lastModified ? new Date(page.lastModified) : null,
+      lastSubmittedAt: submittedAt
+    },
+    update: {
+      contentLastModifiedAt: page.lastModified ? new Date(page.lastModified) : null,
+      lastSubmittedAt: submittedAt
+    }
   })));
 }

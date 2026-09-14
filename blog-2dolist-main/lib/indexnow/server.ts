@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { getLocalizedSitemap } from '@/lib/seo/sitemap';
 import { locales } from '@/lib/i18n/routing';
 import { siteConfig } from '@/lib/constants';
-import { calculateIndexNowPages, deduplicateSitemapEntries, isValidIndexNowKey, type IndexNowPage } from './core';
+import { calculateIndexNowPages, deduplicateSitemapEntries, isValidIndexNowKey, processIndexNowBatches, type IndexNowPage } from './core';
 import { readIndexNowHistory, saveSuccessfulIndexNowSubmissions } from './history';
 
 const INDEXNOW_ENDPOINT = 'https://www.bing.com/indexnow';
@@ -17,14 +17,14 @@ export const getIndexNowKey = () => {
 
 export async function readIndexNowStore() {
   try {
-    return { submissions: await readIndexNowHistory(prisma.indexNowSubmission) };
+    return { submissions: await readIndexNowHistory(prisma.indexNowHistory) };
   } catch {
     throw new Error('Impossible de lire l’historique IndexNow.');
   }
 }
 
 async function mergeSuccessfulSubmissions(pages: IndexNowPage[], submittedAt: string) {
-  await saveSuccessfulIndexNowSubmissions(prisma.indexNowSubmission, pages, new Date(submittedAt));
+  await saveSuccessfulIndexNowSubmissions(prisma.indexNowHistory, pages, new Date(submittedAt));
 }
 
 export async function getIndexNowPages() {
@@ -62,9 +62,7 @@ export async function submitIndexNowPages(pages: IndexNowPage[]) {
   const keyLocation = new URL(`/${key}.txt`, configuredUrl).toString();
   await verifyKeyFile(key, keyLocation);
 
-  const submittedUrls: string[] = [];
-  for (let offset = 0; offset < pages.length; offset += MAX_URLS_PER_BATCH) {
-    const batch = pages.slice(offset, offset + MAX_URLS_PER_BATCH);
+  return processIndexNowBatches(pages, MAX_URLS_PER_BATCH, async (batch, submittedUrls) => {
     let response: Response;
     try {
       response = await fetch(INDEXNOW_ENDPOINT, {
@@ -79,9 +77,7 @@ export async function submitIndexNowPages(pages: IndexNowPage[]) {
     if (!response.ok) {
       throw new IndexNowSubmissionError(`IndexNow a refusé un lot (statut HTTP ${response.status}).`, 502, submittedUrls);
     }
-    const submittedAt = new Date().toISOString();
-    await mergeSuccessfulSubmissions(batch, submittedAt);
-    submittedUrls.push(...batch.map((page) => page.url));
-  }
-  return submittedUrls;
+  }, async (batch) => {
+    await mergeSuccessfulSubmissions(batch, new Date().toISOString());
+  });
 }

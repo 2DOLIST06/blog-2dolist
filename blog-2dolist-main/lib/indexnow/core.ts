@@ -66,3 +66,19 @@ export function calculateIndexNowPages(
 
 export const filterAllowedUrls = (requested: unknown[], allowedUrls: Set<string>) =>
   [...new Set(requested.filter((url): url is string => typeof url === 'string' && allowedUrls.has(url)))];
+
+export async function processIndexNowBatches(
+  pages: IndexNowPage[],
+  batchSize: number,
+  submitBatch: (batch: IndexNowPage[], alreadySubmittedUrls: string[]) => Promise<void>,
+  saveAcceptedBatch: (batch: IndexNowPage[]) => Promise<void>
+) {
+  const submittedUrls: string[] = [];
+  for (let offset = 0; offset < pages.length; offset += batchSize) {
+    const batch = pages.slice(offset, offset + batchSize);
+    await submitBatch(batch, submittedUrls);
+    await saveAcceptedBatch(batch);
+    submittedUrls.push(...batch.map((page) => page.url));
+  }
+  return submittedUrls;
+}
