@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { PublicEditButton } from '@/components/admin/PublicEditButton';
 import { ArticlePageView } from '@/components/blog/ArticlePageView';
 import { RichContentRenderer } from '@/components/blog/RichContentRenderer';
 import { PostCard } from '@/components/blog/PostCard';
 import { Container } from '@/components/ui/Container';
+import { hasAdminSession } from '@/lib/admin/auth';
 import { withConfiguredLongCategoryCopy } from '@/lib/content/category-copy';
 import { contentRepository } from '@/lib/content/repository';
 import { siteConfig } from '@/lib/site/config';
@@ -49,15 +51,19 @@ export default async function WordPressPathArticlePage({ params }: { params: Pro
     if (!rawCategory) return notFound();
 
     const category = withConfiguredLongCategoryCopy(rawCategory);
-    const [posts, authors] = await Promise.all([
+    const [posts, authors, canEdit] = await Promise.all([
       contentRepository.getPostsByCategoryAndLocale(category.slug, siteConfig.defaultLocale),
-      contentRepository.getAllAuthorsByLocale(siteConfig.defaultLocale)
+      contentRepository.getAllAuthorsByLocale(siteConfig.defaultLocale),
+      hasAdminSession()
     ]);
 
     return (
       <Container>
         <section className="py-12">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{category.h1 || category.title}</h1>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{category.h1 || category.title}</h1>
+            {canEdit ? <PublicEditButton href={`/admin/categories/${category.id}`} label="Modifier cette rubrique" /> : null}
+          </div>
           <p className="mt-2 max-w-2xl text-slate-600">{category.excerpt || category.description}</p>
           {category.contentHtml ? <div className="mt-8 max-w-4xl"><RichContentRenderer contentHtml={category.contentHtml} /></div> : null}
           <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -74,11 +80,12 @@ export default async function WordPressPathArticlePage({ params }: { params: Pro
 
   if (!post) return notFound();
 
-  const [author, category, relatedPosts] = await Promise.all([
+  const [author, category, relatedPosts, canEdit] = await Promise.all([
     contentRepository.getAuthorBySlugAndLocale(post.authorSlug, post.locale),
     contentRepository.getCategoryBySlugAndLocale(post.categorySlug, post.locale),
-    contentRepository.getRelatedPosts(post, 3)
+    contentRepository.getRelatedPosts(post, 3),
+    hasAdminSession()
   ]);
 
-  return <ArticlePageView post={post} author={author} category={category} relatedPosts={relatedPosts} />;
+  return <ArticlePageView post={post} author={author} category={category} relatedPosts={relatedPosts} canEdit={canEdit} />;
 }
