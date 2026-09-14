@@ -632,6 +632,14 @@ export function PostEditorForm({ initialPost }: { initialPost?: InitialPost }) {
       <div className="mb-4 flex flex-wrap gap-2">
         <button type="button" className={secondaryButtonClass} onClick={openImport}>Importer JSON</button>
         <button type="button" className={secondaryButtonClass} onClick={openExport}>Exporter JSON</button>
+         {publicUrl ? (
+          <Link
+            href={publicUrl}
+            className="inline-flex items-center rounded bg-slate-100 px-3 py-2 text-sm font-medium text-slate-950 transition hover:bg-white"
+          >
+            Voir l’article
+          </Link>
+        ) : null}
       </div>
       {jsonModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="article-json-title">
