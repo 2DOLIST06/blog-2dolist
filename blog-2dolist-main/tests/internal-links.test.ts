@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyHref, groupLinkOccurrences, normalizeAnchor } from '../lib/admin/internal-links';
+import { classifyHref, groupLinkOccurrences, normalizeAnchor } from '../lib/admin/internal-links.ts';
 
 test('normalise uniquement les espaces et conserve la casse et les accents', () => {
   assert.equal(normalizeAnchor('  Saut\n  Éclair  '), 'Saut Éclair');
