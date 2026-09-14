@@ -4,11 +4,47 @@ import { prisma } from '@/lib/db';
 import { getLocalizedSitemap } from '@/lib/seo/sitemap';
 import { locales } from '@/lib/i18n/routing';
 import { siteConfig } from '@/lib/constants';
-import { calculateIndexNowPages, deduplicateSitemapEntries, isValidIndexNowKey, type IndexNowPage } from './core';
-import { readIndexNowHistory, saveSuccessfulIndexNowSubmissions } from './history';
+import { calculateIndexNowPages, deduplicateSitemapEntries, isValidIndexNowKey, processIndexNowBatches, type IndexNowPage } from './core';
+import {
+  readIndexNowHistory,
+  saveSuccessfulIndexNowSubmissions,
+  type IndexNowSubmissionDatabase,
+  type IndexNowSubmissionRecord
+} from './history';
 
 const INDEXNOW_ENDPOINT = 'https://www.bing.com/indexnow';
 const MAX_URLS_PER_BATCH = 10_000;
+
+const indexNowHistoryDatabase: IndexNowSubmissionDatabase = {
+  findMany: async () => prisma.$queryRaw<IndexNowSubmissionRecord[]>`
+    SELECT
+      url,
+      content_last_modified_at AS "contentLastModifiedAt",
+      last_submitted_at AS "lastSubmittedAt"
+    FROM indexnow_history
+  `,
+  upsert: ({ create }) => prisma.$executeRaw`
+    INSERT INTO indexnow_history (
+      url,
+      content_last_modified_at,
+      last_submitted_at,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${create.url},
+      ${create.contentLastModifiedAt},
+      NOW(),
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (url)
+    DO UPDATE SET
+      content_last_modified_at = EXCLUDED.content_last_modified_at,
+      last_submitted_at = NOW(),
+      updated_at = NOW()
+  `
+};
 
 export const getIndexNowKey = () => {
   const key = (process.env.INDEXNOW_KEY || process.env.BING_INDEXNOW_KEY || '').trim();
@@ -17,14 +53,14 @@ export const getIndexNowKey = () => {
 
 export async function readIndexNowStore() {
   try {
-    return { submissions: await readIndexNowHistory(prisma.indexNowSubmission) };
+    return { submissions: await readIndexNowHistory(indexNowHistoryDatabase) };
   } catch {
     throw new Error('Impossible de lire l’historique IndexNow.');
   }
 }
 
 async function mergeSuccessfulSubmissions(pages: IndexNowPage[], submittedAt: string) {
-  await saveSuccessfulIndexNowSubmissions(prisma.indexNowSubmission, pages, new Date(submittedAt));
+  await saveSuccessfulIndexNowSubmissions(indexNowHistoryDatabase, pages, new Date(submittedAt));
 }
 
 export async function getIndexNowPages() {
@@ -62,9 +98,7 @@ export async function submitIndexNowPages(pages: IndexNowPage[]) {
   const keyLocation = new URL(`/${key}.txt`, configuredUrl).toString();
   await verifyKeyFile(key, keyLocation);
 
-  const submittedUrls: string[] = [];
-  for (let offset = 0; offset < pages.length; offset += MAX_URLS_PER_BATCH) {
-    const batch = pages.slice(offset, offset + MAX_URLS_PER_BATCH);
+  return processIndexNowBatches(pages, MAX_URLS_PER_BATCH, async (batch, submittedUrls) => {
     let response: Response;
     try {
       response = await fetch(INDEXNOW_ENDPOINT, {
@@ -79,9 +113,7 @@ export async function submitIndexNowPages(pages: IndexNowPage[]) {
     if (!response.ok) {
       throw new IndexNowSubmissionError(`IndexNow a refusé un lot (statut HTTP ${response.status}).`, 502, submittedUrls);
     }
-    const submittedAt = new Date().toISOString();
-    await mergeSuccessfulSubmissions(batch, submittedAt);
-    submittedUrls.push(...batch.map((page) => page.url));
-  }
-  return submittedUrls;
+  }, async (batch) => {
+    await mergeSuccessfulSubmissions(batch, new Date().toISOString());
+  });
 }

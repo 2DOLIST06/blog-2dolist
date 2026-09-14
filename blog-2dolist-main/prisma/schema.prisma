@@ -7,10 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model IndexNowSubmission {
-  url          String   @id @db.Text
-  lastModified String?  @map("last_modified") @db.Text
-  submittedAt  DateTime @map("submitted_at") @db.Timestamptz(3)
+model IndexNowHistory {
+  id                    BigInt    @id @default(autoincrement())
+  url                   String    @unique @db.Text
+  contentLastModifiedAt DateTime? @map("content_last_modified_at") @db.Timestamptz(6)
+  lastSubmittedAt       DateTime  @map("last_submitted_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  @@map("indexnow_submissions")
+  @@index([lastSubmittedAt], map: "idx_indexnow_history_last_submitted_at")
+  @@index([contentLastModifiedAt], map: "idx_indexnow_history_content_last_modified_at")
+  @@map("indexnow_history")
 }
