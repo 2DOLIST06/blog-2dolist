@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { contentRepository } from '@/lib/content/repository';
+import { contentRepository, type ContentFetchOptions } from '@/lib/content/repository';
 import { siteConfig } from '@/lib/constants';
 import { absoluteUrl } from '@/lib/i18n/routing';
 import type { Locale } from '@/lib/i18n/routing';
@@ -9,10 +9,13 @@ const staticPathsByLocale: Record<Locale, string[]> = {
   fr: ['/']
 };
 
-export const getLocalizedSitemap = async (locale: Locale): Promise<MetadataRoute.Sitemap> => {
+export const getLocalizedSitemap = async (
+  locale: Locale,
+  fetchOptions?: ContentFetchOptions
+): Promise<MetadataRoute.Sitemap> => {
   const [posts, categories] = await Promise.all([
-    contentRepository.getAllPostsByLocale(locale),
-    contentRepository.getAllCategoriesByLocale(locale)
+    contentRepository.getAllPostsByLocale(locale, fetchOptions),
+    contentRepository.getAllCategoriesByLocale(locale, fetchOptions)
   ]);
 
   const staticPages: MetadataRoute.Sitemap = staticPathsByLocale[locale].map((path) => ({
