@@ -1,47 +1,30 @@
 import 'server-only';
 
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import path from 'node:path';
+import { prisma } from '@/lib/db';
 import { getLocalizedSitemap } from '@/lib/seo/sitemap';
 import { locales } from '@/lib/i18n/routing';
 import { siteConfig } from '@/lib/constants';
-import { calculateIndexNowPages, deduplicateSitemapEntries, isValidIndexNowKey, type IndexNowHistory, type IndexNowPage } from './core';
+import { calculateIndexNowPages, deduplicateSitemapEntries, isValidIndexNowKey, type IndexNowPage } from './core';
+import { readIndexNowHistory, saveSuccessfulIndexNowSubmissions } from './history';
 
 const INDEXNOW_ENDPOINT = 'https://www.bing.com/indexnow';
 const MAX_URLS_PER_BATCH = 10_000;
-const DEFAULT_STORE_PATH = '.data/indexnow-submissions.json';
-
-type Store = { submissions: IndexNowHistory };
-let writeQueue = Promise.resolve();
 
 export const getIndexNowKey = () => {
   const key = (process.env.INDEXNOW_KEY || process.env.BING_INDEXNOW_KEY || '').trim();
   return isValidIndexNowKey(key) ? key : null;
 };
 
-const getStorePath = () => path.resolve(process.env.INDEXNOW_STORE_PATH?.trim() || DEFAULT_STORE_PATH);
-
-export async function readIndexNowStore(): Promise<Store> {
+export async function readIndexNowStore() {
   try {
-    const parsed = JSON.parse(await readFile(getStorePath(), 'utf8')) as Partial<Store>;
-    return { submissions: parsed.submissions && typeof parsed.submissions === 'object' ? parsed.submissions : {} };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { submissions: {} };
+    return { submissions: await readIndexNowHistory(prisma.indexNowSubmission) };
+  } catch {
     throw new Error('Impossible de lire l’historique IndexNow.');
   }
 }
 
 async function mergeSuccessfulSubmissions(pages: IndexNowPage[], submittedAt: string) {
-  writeQueue = writeQueue.then(async () => {
-    const store = await readIndexNowStore();
-    for (const page of pages) store.submissions[page.url] = { submittedAt, lastModified: page.lastModified };
-    const storePath = getStorePath();
-    await mkdir(path.dirname(storePath), { recursive: true });
-    const temporaryPath = `${storePath}.${process.pid}.tmp`;
-    await writeFile(temporaryPath, `${JSON.stringify(store, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
-    await rename(temporaryPath, storePath);
-  });
-  await writeQueue;
+  await saveSuccessfulIndexNowSubmissions(prisma.indexNowSubmission, pages, new Date(submittedAt));
 }
 
 export async function getIndexNowPages() {

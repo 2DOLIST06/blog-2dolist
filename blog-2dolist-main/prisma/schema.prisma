@@ -1,0 +1,16 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model IndexNowSubmission {
+  url          String   @id @db.Text
+  lastModified String?  @map("last_modified") @db.Text
+  submittedAt  DateTime @map("submitted_at") @db.Timestamptz(3)
+
+  @@map("indexnow_submissions")
+}
