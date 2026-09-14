@@ -1,6 +1,5 @@
 node_modules/
 .next/
 tsconfig.tsbuildinfo
-.data/
 .env*
 !.env.example
