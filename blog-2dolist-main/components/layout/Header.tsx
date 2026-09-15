@@ -7,6 +7,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Container } from '@/components/ui/Container';
 
 const adminHeaderPreferenceKey = 'admin-public-header-hidden';
+const desktopHeaderQuery = '(min-width: 768px)';
+const scrollDirectionThreshold = 8;
+
+type DesktopHeaderState = 'full' | 'navigation' | 'hidden';
 
 const aerialActivities = [
   { label: 'Avion', href: '/category/aerien/avion/', icon: 'plane' },
@@ -31,10 +35,95 @@ function ActivityIcon({ type }: { type: (typeof aerialActivities)[number]['icon'
 export function Header() {
   const pathname = usePathname() ?? '/';
   const headerRef = useRef<HTMLElement>(null);
+  const primaryHeaderRef = useRef<HTMLDivElement>(null);
+  const lastScrollYRef = useRef(0);
+  const scrollDistanceRef = useRef(0);
+  const scrollFrameRef = useRef<number | null>(null);
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
   const isProtectedAdminPage = isAdminPage && pathname !== '/admin/login';
   const [isAdminHeaderHidden, setIsAdminHeaderHidden] = useState(false);
+  const [desktopHeaderState, setDesktopHeaderState] = useState<DesktopHeaderState>('full');
   const isHeaderHidden = isProtectedAdminPage && isAdminHeaderHidden;
+
+  useEffect(() => {
+    if (isAdminPage) return;
+
+    const desktopMedia = window.matchMedia(desktopHeaderQuery);
+
+    const resetHeader = () => {
+      lastScrollYRef.current = window.scrollY;
+      scrollDistanceRef.current = 0;
+      setDesktopHeaderState('full');
+    };
+
+    const updateHeader = () => {
+      scrollFrameRef.current = null;
+
+      if (!desktopMedia.matches) {
+        resetHeader();
+        return;
+      }
+
+      const currentScrollY = Math.max(window.scrollY, 0);
+      const delta = currentScrollY - lastScrollYRef.current;
+
+      if (currentScrollY <= scrollDirectionThreshold) {
+        setDesktopHeaderState('full');
+        scrollDistanceRef.current = 0;
+      } else if (delta !== 0) {
+        const previousDirection = Math.sign(scrollDistanceRef.current);
+        const nextDirection = Math.sign(delta);
+
+        scrollDistanceRef.current = previousDirection === nextDirection
+          ? scrollDistanceRef.current + delta
+          : delta;
+
+        if (scrollDistanceRef.current >= scrollDirectionThreshold) {
+          setDesktopHeaderState('hidden');
+          scrollDistanceRef.current = 0;
+        } else if (scrollDistanceRef.current <= -scrollDirectionThreshold) {
+          setDesktopHeaderState('navigation');
+          scrollDistanceRef.current = 0;
+        }
+      }
+
+      lastScrollYRef.current = currentScrollY;
+    };
+
+    const onScroll = () => {
+      if (scrollFrameRef.current === null) {
+        scrollFrameRef.current = window.requestAnimationFrame(updateHeader);
+      }
+    };
+
+    const onBreakpointChange = () => resetHeader();
+
+    resetHeader();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    desktopMedia.addEventListener('change', onBreakpointChange);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      desktopMedia.removeEventListener('change', onBreakpointChange);
+      if (scrollFrameRef.current !== null) window.cancelAnimationFrame(scrollFrameRef.current);
+    };
+  }, [isAdminPage]);
+
+  useEffect(() => {
+    const primaryHeader = primaryHeaderRef.current;
+    const header = headerRef.current;
+    if (!primaryHeader || !header) return;
+
+    const updatePrimaryHeight = () => {
+      header.style.setProperty('--header-primary-height', `${primaryHeader.offsetHeight}px`);
+    };
+
+    updatePrimaryHeight();
+    const resizeObserver = new ResizeObserver(updatePrimaryHeight);
+    resizeObserver.observe(primaryHeader);
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!isProtectedAdminPage) return;
@@ -84,10 +173,11 @@ export function Header() {
       <header
         ref={headerRef}
         data-admin-measured-header
+        data-scroll-state={isAdminPage ? 'full' : desktopHeaderState}
         hidden={isHeaderHidden}
-        className="sticky top-0 z-50 bg-white shadow-[0_8px_30px_rgba(15,42,62,0.10)]"
+        className="sticky top-0 z-50 bg-white shadow-[0_8px_30px_rgba(15,42,62,0.10)] transition-transform duration-300 ease-out motion-reduce:transition-none md:data-[scroll-state=hidden]:-translate-y-full md:data-[scroll-state=navigation]:translate-y-[calc(-1*var(--header-primary-height))]"
       >
-      <div className="relative overflow-hidden border-b border-slate-100">
+      <div ref={primaryHeaderRef} className="relative overflow-hidden border-b border-slate-100">
         <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/3 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.13),transparent_65%)] lg:block" />
         <Container>
           <div className="flex h-[74px] items-center justify-between md:h-[106px]">
