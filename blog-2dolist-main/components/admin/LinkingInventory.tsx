@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import type { InternalLinkType, LinkingPage, LinkingRelation } from '@/types/internal-links';
 
 type FilterType = InternalLinkType | 'all';
+type SearchScope = 'title' | 'content';
 type Sort = 'title' | 'incoming-asc' | 'incoming-desc' | 'outgoing-asc' | 'outgoing-desc';
 const field = 'rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-brand-500';
 const labels: Record<InternalLinkType, string> = { post: 'Article', category: 'Catégorie', 'static-page': 'Page' };
@@ -27,6 +28,9 @@ export function LinkingInventory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [searchScope, setSearchScope] = useState<SearchScope>('title');
+  const [contentMatches, setContentMatches] = useState<{ query: string; ids: Set<string> } | null>(null);
+  const [contentSearchLoading, setContentSearchLoading] = useState(false);
   const [type, setType] = useState<FilterType>('all');
   const [category, setCategory] = useState('');
   const [orphansOnly, setOrphansOnly] = useState(false);
@@ -46,7 +50,20 @@ export function LinkingInventory() {
     finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
-  useEffect(() => { setPage(1); }, [query, type, category, orphansOnly, sort]);
+  useEffect(() => { setPage(1); }, [query, searchScope, contentMatches, type, category, orphansOnly, sort]);
+
+  const searchAllContent = async () => {
+    const needle = query.trim();
+    if (!needle) { setContentMatches(null); return; }
+    setContentSearchLoading(true); setError('');
+    try {
+      const response = await fetch(`/admin-api/linking-inventory?contentQuery=${encodeURIComponent(needle)}`, { cache: 'no-store' });
+      const payload = await response.json().catch(() => ({})) as { matchingIds?: string[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || 'Recherche impossible.');
+      setContentMatches({ query: needle, ids: new Set(payload.matchingIds ?? []) });
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Recherche impossible.'); }
+    finally { setContentSearchLoading(false); }
+  };
 
   const categories = useMemo(() => Array.from(new Map(pages.flatMap((item) => item.category ? [[item.category.id, item.category.title] as const] : [])).entries()), [pages]);
   const filtered = useMemo(() => {
@@ -54,25 +71,30 @@ export function LinkingInventory() {
     return pages.filter((item) => (type === 'all' || item.type === type)
       && (!category || item.category?.id === category)
       && (!orphansOnly || item.incomingCount === 0)
-      && (!needle || `${item.title} ${item.url}`.toLocaleLowerCase('fr').includes(needle)))
+      && (!needle || (searchScope === 'title'
+        ? item.title.toLocaleLowerCase('fr').includes(needle)
+        : contentMatches === null || contentMatches.query !== query.trim() || contentMatches.ids.has(item.id))))
       .sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title, 'fr')
         : sort === 'incoming-asc' ? a.incomingCount - b.incomingCount
         : sort === 'incoming-desc' ? b.incomingCount - a.incomingCount
         : sort === 'outgoing-asc' ? a.outgoingCount - b.outgoingCount
         : b.outgoingCount - a.outgoingCount);
-  }, [pages, query, type, category, orphansOnly, sort]);
+  }, [pages, query, searchScope, contentMatches, type, category, orphansOnly, sort]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return <div>
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-3xl font-bold text-white">Maillage interne</h1><p className="mt-2 text-sm text-slate-400">Liens réels extraits des contenus publiés et indexables. Les liens vers blog.2dolist.fr, 2dolist.fr et www.2dolist.fr sont internes.</p></div><button type="button" onClick={() => void load()} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500">Actualiser l’analyse</button></div>
-    <div className="mt-6 grid gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-5">
-      <input className={field} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Titre ou URL…" aria-label="Rechercher une page" />
+    <form className="mt-6 grid gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-6" onSubmit={(event) => { event.preventDefault(); if (searchScope === 'content') void searchAllContent(); }}>
+      <input className={field} value={query} onChange={(event) => { setQuery(event.target.value); setContentMatches(null); }} placeholder={searchScope === 'title' ? 'Rechercher dans le titre…' : 'Mot ou expression…'} aria-label="Rechercher une page" />
+      <select className={field} value={searchScope} onChange={(event) => { setSearchScope(event.target.value as SearchScope); setContentMatches(null); }} aria-label="Zone de recherche"><option value="title">Dans le titre</option><option value="content">Dans tout le contenu</option></select>
       <select className={field} value={type} onChange={(event) => { setType(event.target.value as FilterType); if (event.target.value !== 'post') setCategory(''); }} aria-label="Filtrer par type"><option value="all">Tous les types</option><option value="post">Articles</option><option value="category">Catégories</option><option value="static-page">Pages</option></select>
       {type === 'post' ? <select className={field} value={category} onChange={(event) => setCategory(event.target.value)} aria-label="Filtrer par catégorie"><option value="">Toutes les catégories</option>{categories.map(([id, title]) => <option key={id} value={id}>{title}</option>)}</select> : <div />}
       <select className={field} value={sort} onChange={(event) => setSort(event.target.value as Sort)} aria-label="Trier les pages"><option value="incoming-asc">Entrants croissants</option><option value="incoming-desc">Entrants décroissants</option><option value="outgoing-asc">Sortants croissants</option><option value="outgoing-desc">Sortants décroissants</option><option value="title">Titre</option></select>
       <label className="flex items-center gap-2 text-sm text-slate-200"><input type="checkbox" checked={orphansOnly} onChange={(event) => setOrphansOnly(event.target.checked)} /> 0 lien entrant</label>
-    </div>
+      {searchScope === 'content' ? <button type="submit" disabled={!query.trim() || contentSearchLoading} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50">{contentSearchLoading ? 'Recherche…' : 'Rechercher'}</button> : null}
+      {searchScope === 'content' ? <p className="text-xs text-slate-400 md:col-span-6">La lecture de tous les contenus démarre uniquement lorsque vous cliquez sur « Rechercher ».</p> : null}
+    </form>
     <p className="mt-4 text-sm text-slate-400">{filtered.length} pages · {pages.filter((item) => item.incomingCount === 0).length} sans lien entrant</p>
     {loading ? <p className="mt-8 text-slate-300">Analyse en cours…</p> : error ? <p className="mt-8 rounded-lg border border-red-900 bg-red-950 p-4 text-red-100" role="alert">{error}</p> : <div className="mt-4 overflow-hidden rounded-xl border border-slate-800">
       <table className="w-full text-left text-sm"><thead className="bg-slate-900 text-slate-300"><tr><th className="p-3">Page</th><th className="p-3">Type</th><th className="p-3 text-center">Entrants</th><th className="p-3 text-center">Sortants</th><th className="p-3">Détail</th></tr></thead><tbody className="divide-y divide-slate-800">{visible.map((item) => <Fragment key={item.id}>

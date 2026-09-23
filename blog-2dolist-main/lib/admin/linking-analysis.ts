@@ -28,6 +28,19 @@ const decodeHtml = (value: string) => value
   .replace(/&lt;/gi, '<')
   .replace(/&gt;/gi, '>');
 
+export const htmlToSearchableText = (html: string) => decodeHtml(html
+  .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, ' ')
+  .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, ' ')
+  .replace(/<[^>]*>/g, ' '))
+  .replace(/\s+/g, ' ')
+  .trim();
+
+export const contentIncludes = (title: string, html: string, query: string) => {
+  const needle = query.trim().toLocaleLowerCase('fr');
+  if (!needle) return true;
+  return `${title} ${htmlToSearchableText(html)}`.toLocaleLowerCase('fr').includes(needle);
+};
+
 export const extractLinksFromHtml = (html: string): ExtractedHtmlLink[] => {
   const links: ExtractedHtmlLink[] = [];
   const anchorPattern = /<a\b([^>]*)>([\s\S]*?)<\/a\s*>/gi;
