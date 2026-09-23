@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeInternalLinking, extractLinksFromHtml, normalizeInternalUrl } from '../lib/admin/linking-analysis.ts';
+import { analyzeInternalLinking, contentIncludes, extractLinksFromHtml, htmlToSearchableText, normalizeInternalUrl } from '../lib/admin/linking-analysis.ts';
+
+test('convertit le HTML en texte recherchable sans scripts ni styles', () => {
+  assert.equal(htmlToSearchableText('<p>Un <strong>avion</strong>&nbsp;bleu</p><script>avionSecret()</script>'), 'Un avion bleu');
+});
+
+test('recherche une expression dans le titre ou dans tout le contenu', () => {
+  assert.equal(contentIncludes('Voyager', '<p>Prendre un avion demain.</p>', 'AVION'), true);
+  assert.equal(contentIncludes('En effet : le guide', '<p>Introduction</p>', 'en effet'), true);
+  assert.equal(contentIncludes('Voyager', '<p>Prendre le train.</p>', 'avion'), false);
+});
 
 test('extrait les href réels, les ancres et les images liées', () => {
   assert.deepEqual(extractLinksFromHtml('<a href="/a">  Premier <b>lien</b> </a><a href="/b"><img alt="Visuel"></a>'), [

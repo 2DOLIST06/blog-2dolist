@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { buildApiUrl } from '@/lib/api/env';
 import { buildUpstreamAuthHeaders } from '@/lib/admin/upstream-token';
-import { analyzeInternalLinking, type AnalysisPageInput } from '@/lib/admin/linking-analysis';
+import { analyzeInternalLinking, contentIncludes, type AnalysisPageInput } from '@/lib/admin/linking-analysis';
 import { staticInternalPages } from '@/lib/admin/static-internal-pages';
 import { getArticlePath, getCategoryPath } from '@/lib/i18n/routing';
 import type { InternalLinkType } from '@/types/internal-links';
@@ -69,7 +69,7 @@ const toPage = (item: Item, type: InternalLinkType): AnalysisPageInput | undefin
   return { id: `${type}:${id}`, type, title, url, html: pageHtml(item), locale: 'fr', category: type === 'post' ? categoryOf(item) : undefined };
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   const headers = await buildUpstreamAuthHeaders();
   if (headers === null) return NextResponse.json({ error: 'Session admin absente, reconnectez-vous.' }, { status: 401 });
   try {
@@ -82,6 +82,14 @@ export async function GET() {
       ...categories.map((item) => toPage(item, 'category')).filter((item): item is AnalysisPageInput => Boolean(item)),
       ...staticInternalPages.map((item) => ({ id: `${item.type}:${item.id}`, type: item.type, title: item.title, url: item.href, locale: item.locale }))
     ];
+    const contentQuery = new URL(request.url).searchParams.get('contentQuery')?.trim();
+    if (contentQuery) {
+      return NextResponse.json({
+        matchingIds: inputs
+          .filter((item) => contentIncludes(item.title, item.html ?? '', contentQuery))
+          .map((item) => item.id)
+      });
+    }
     return NextResponse.json({ data: analyzeInternalLinking(inputs), generatedAt: new Date().toISOString() });
   } catch (error) {
     const unauthorized = error instanceof Error && error.message === 'upstream:401';
