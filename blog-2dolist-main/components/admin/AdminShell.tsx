@@ -7,6 +7,7 @@ const links = [
   { label: 'Dashboard', href: '/admin' },
   { label: 'Articles', href: '/admin/posts' },
   { label: 'Catégories', href: '/admin/categories' },
+  { label: 'Maillage interne', href: '/admin/internal-linking' },
   { label: 'Bing IndexNow', href: '/admin/indexnow' },
   { label: 'Créer un article', href: '/admin/posts/new' }
 ];
