@@ -20,7 +20,9 @@ test('regroupe strictement ancre normalisée et href brut nettoyé', () => {
 test('classe les formes de liens sans résoudre leur URL', () => {
   assert.equal(classifyHref('/articles/foo'), 'internal');
   assert.equal(classifyHref('https://example.com'), 'external');
+  assert.equal(classifyHref('https://blog.2dolist.fr/articles/foo'), 'internal');
+  assert.equal(classifyHref('https://www.2dolist.fr/activite/foo'), 'internal');
   assert.equal(classifyHref('#section'), 'fragment');
   assert.equal(classifyHref('mailto:test@example.com'), 'mailto');
-  assert.equal(classifyHref('tel:+331234'), 'other');
+  assert.equal(classifyHref('tel:+331234'), 'tel');
 });

@@ -852,7 +852,7 @@ export function RichContentEditor({
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {count > 1 ? <><button type="button" className={buttonClass()} onClick={() => goToLink(group, position - 1)}>Précédent</button><span className="text-xs">{position + 1}/{count}</span><button type="button" className={buttonClass()} onClick={() => goToLink(group, position + 1)}>Suivant</button></> : null}
               <button type="button" className={buttonClass()} onClick={() => goToLink(group, position)}>Aller au lien</button>
-              <button type="button" className={buttonClass()} onClick={() => { try { window.open(new URL(group.href, window.location.origin).href, '_blank', 'noopener,noreferrer'); } catch { /* URL non ouvrable */ } }}>Ouvrir</button>
+              <button type="button" className={buttonClass()} onClick={() => { try { window.open(new URL(group.href, window.location.origin).href, '_blank', 'noopener,noreferrer'); } catch { /* URL non ouvrable */ } }}>Ouvrir la page</button>
             </div>
           </li>;
         })}</ul> : <p className="mt-3 text-slate-400">Aucun lien dans le contenu.</p>}

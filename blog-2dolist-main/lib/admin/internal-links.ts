@@ -1,4 +1,4 @@
-export type LinkKind = 'internal' | 'external' | 'fragment' | 'mailto' | 'other';
+export type LinkKind = 'internal' | 'external' | 'fragment' | 'mailto' | 'tel' | 'other';
 
 export type LinkOccurrence = {
   anchor: string;
@@ -15,10 +15,16 @@ export type LinkGroup = Omit<LinkOccurrence, 'documentIndex'> & {
 export const normalizeAnchor = (anchor: string) => anchor.replace(/\s+/g, ' ').trim();
 
 export const classifyHref = (href: string): LinkKind => {
-  if (href.startsWith('#')) return 'fragment';
-  if (href.toLowerCase().startsWith('mailto:')) return 'mailto';
-  if (href.startsWith('/')) return 'internal';
-  if (/^https?:\/\//i.test(href)) return 'external';
+  const trimmed = href.trim();
+  if (trimmed.startsWith('#')) return 'fragment';
+  if (trimmed.toLowerCase().startsWith('mailto:')) return 'mailto';
+  if (trimmed.toLowerCase().startsWith('tel:')) return 'tel';
+  if (trimmed.startsWith('/')) return 'internal';
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      return ['blog.2dolist.fr', '2dolist.fr', 'www.2dolist.fr'].includes(new URL(trimmed).hostname.toLowerCase()) ? 'internal' : 'external';
+    } catch { return 'other'; }
+  }
   return 'other';
 };
 
@@ -49,4 +55,3 @@ export const groupLinkOccurrences = (occurrences: LinkOccurrence[]): LinkGroup[]
   }
   return [...groups.values()];
 };
-
