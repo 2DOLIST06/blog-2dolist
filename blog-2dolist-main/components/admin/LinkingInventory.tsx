@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import type { InternalLinkType, LinkingPage, LinkingRelation } from '@/types/internal-links';
 
 type FilterType = InternalLinkType | 'all';
@@ -8,6 +9,13 @@ type SearchScope = 'title' | 'content';
 type Sort = 'title' | 'incoming-asc' | 'incoming-desc' | 'outgoing-asc' | 'outgoing-desc';
 const field = 'rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-brand-500';
 const labels: Record<InternalLinkType, string> = { post: 'Article', category: 'Catégorie', 'static-page': 'Page' };
+
+export const getLinkingPageEditorHref = (page: Pick<LinkingPage, 'id' | 'type'>) => {
+  const contentId = page.id.startsWith(`${page.type}:`) ? page.id.slice(page.type.length + 1) : page.id;
+  if (page.type === 'post') return `/admin/posts/${encodeURIComponent(contentId)}`;
+  if (page.type === 'category') return `/admin/categories/${encodeURIComponent(contentId)}`;
+  return undefined;
+};
 
 const RelationList = ({ title, relations, direction }: { title: string; relations: LinkingRelation[]; direction: 'incoming' | 'outgoing' }) => (
   <section>
@@ -97,8 +105,8 @@ export function LinkingInventory() {
     </form>
     <p className="mt-4 text-sm text-slate-400">{filtered.length} pages · {pages.filter((item) => item.incomingCount === 0).length} sans lien entrant</p>
     {loading ? <p className="mt-8 text-slate-300">Analyse en cours…</p> : error ? <p className="mt-8 rounded-lg border border-red-900 bg-red-950 p-4 text-red-100" role="alert">{error}</p> : <div className="mt-4 overflow-hidden rounded-xl border border-slate-800">
-      <table className="w-full text-left text-sm"><thead className="bg-slate-900 text-slate-300"><tr><th className="p-3">Page</th><th className="p-3">Type</th><th className="p-3 text-center">Entrants</th><th className="p-3 text-center">Sortants</th><th className="p-3">Détail</th></tr></thead><tbody className="divide-y divide-slate-800">{visible.map((item) => <Fragment key={item.id}>
-        <tr className="bg-slate-950"><td className="p-3"><strong className="text-white">{item.title}</strong><p className="break-all text-xs text-slate-500">{item.url} · FR{item.category ? ` · ${item.category.title}` : ''}</p></td><td className="p-3"><span className="rounded bg-slate-800 px-2 py-1 text-xs">{labels[item.type]}</span></td><td className="p-3 text-center"><span className={item.incomingCount === 0 ? 'rounded bg-red-950 px-2 py-1 font-bold text-red-200' : ''}>{item.incomingCount}</span></td><td className="p-3 text-center">{item.outgoingCount}</td><td className="p-3"><button type="button" className="text-brand-300 underline" onClick={() => setExpanded(expanded === item.id ? null : item.id)}>{expanded === item.id ? 'Fermer' : 'Analyser'}</button></td></tr>
+      <table className="w-full text-left text-sm"><thead className="bg-slate-900 text-slate-300"><tr><th className="p-3">Page</th><th className="p-3">Type</th><th className="p-3 text-center">Entrants</th><th className="p-3 text-center">Sortants</th><th className="p-3">Actions</th></tr></thead><tbody className="divide-y divide-slate-800">{visible.map((item) => <Fragment key={item.id}>
+        <tr className="bg-slate-950"><td className="p-3"><strong className="text-white">{item.title}</strong><p className="break-all text-xs text-slate-500">{item.url} · FR{item.category ? ` · ${item.category.title}` : ''}</p></td><td className="p-3"><span className="rounded bg-slate-800 px-2 py-1 text-xs">{labels[item.type]}</span></td><td className="p-3 text-center"><span className={item.incomingCount === 0 ? 'rounded bg-red-950 px-2 py-1 font-bold text-red-200' : ''}>{item.incomingCount}</span></td><td className="p-3 text-center">{item.outgoingCount}</td><td className="p-3"><div className="flex flex-wrap gap-3">{getLinkingPageEditorHref(item) ? <Link className="font-semibold text-brand-300 underline" href={getLinkingPageEditorHref(item)!}>Modifier</Link> : null}<button type="button" className="text-brand-300 underline" onClick={() => setExpanded(expanded === item.id ? null : item.id)}>{expanded === item.id ? 'Fermer' : 'Analyser'}</button></div></td></tr>
         {expanded === item.id ? <tr className="bg-slate-900"><td colSpan={5} className="grid gap-6 p-5 md:grid-cols-2"><RelationList title="Liens entrants" relations={item.incoming} direction="incoming" /><RelationList title="Liens sortants" relations={item.outgoing} direction="outgoing" /></td></tr> : null}
       </Fragment>)}</tbody></table>
       {!visible.length ? <p className="p-6 text-center text-slate-500">Aucune page ne correspond aux filtres.</p> : null}
