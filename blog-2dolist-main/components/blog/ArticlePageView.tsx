@@ -3,6 +3,7 @@ import { PublicEditButton } from '@/components/admin/PublicEditButton';
 import { AuthorBox } from '@/components/blog/AuthorBox';
 import { FaqSection } from '@/components/blog/FaqSection';
 import { PostCard } from '@/components/blog/PostCard';
+import { NewsletterCta } from '@/components/blog/NewsletterCta';
 import { ArticleRichContentRenderer, sanitizeArticleHtml } from '@/components/blog/RichContentRenderer';
 import { TableOfContents } from '@/components/blog/TableOfContents';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
@@ -121,6 +122,7 @@ export function ArticlePageView({ post, author, category, relatedPosts, canEdit 
             })}
             {shouldRenderFaq ? <FaqSection faqs={post.faqJson ?? []} title="FAQ" /> : null}
             {author ? <AuthorBox author={author} /> : null}
+            <NewsletterCta source="article" locale={post.locale} interest={post.newsletterInterest} region={post.newsletterRegion} />
           </div>
           <div className="lg:sticky lg:top-8 lg:self-start"><TableOfContents slug={post.slug} sections={post.sections} headings={articleHeadings} /></div>
         </div>
