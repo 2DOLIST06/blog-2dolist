@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { normalizeNewsletterPreferences } from '../lib/newsletter-normalization.ts';
 
 const read = (path: string) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -51,4 +52,45 @@ test('le token invalide a un message clair et action=unsubscribe attend un clic 
 
 test('aucun proxy newsletter Next.js ne subsiste', async () => {
   await assert.rejects(read('app/api/newsletter/route.ts'));
+});
+
+test('les collections vides restent des tableaux utilisables au rendu', () => {
+  const preferences = normalizeNewsletterPreferences({
+    email: 'pilote@example.com', interests: [], contentTypes: [], regions: [], subscribed: false
+  });
+
+  assert.deepEqual(preferences.interests, []);
+  assert.deepEqual(preferences.contentTypes, []);
+  assert.deepEqual(preferences.regions, []);
+  assert.equal(preferences.subscribed, false);
+  assert.equal(preferences.interests.includes('airplane'), false);
+  assert.doesNotThrow(() => preferences.regions.map((region) => region.id));
+});
+
+test('une collection absente est normalisée avant les includes du centre', () => {
+  const preferences = normalizeNewsletterPreferences({
+    email: 'pilote@example.com', interests: null, contentTypes: ['new_articles'], frequency: 'monthly'
+  });
+
+  assert.deepEqual(preferences.interests, []);
+  assert.deepEqual(preferences.regions, []);
+  assert.equal(preferences.interests.includes('airplane'), false);
+  assert.equal(preferences.contentTypes.includes('new_articles'), true);
+});
+
+test('le premier rendu attend les préférences normalisées sans déréférencer le brouillon', async () => {
+  const source = await read('components/newsletter/NewsletterPreferences.tsx');
+  assert.match(source, /if \(loading\) return/);
+  assert.match(source, /if \(!draft \|\| !preferences\) return null/);
+  assert.match(source, /getNewsletterPreferences\(token\)/);
+});
+
+test('les anciens noms du contrat API alimentent les sélections après chargement', () => {
+  const preferences = normalizeNewsletterPreferences({
+    categories: ['airplane'],
+    selectedRegions: [{ id: 'occitanie', name: 'Occitanie' }]
+  });
+
+  assert.equal(preferences.interests.includes('airplane'), true);
+  assert.deepEqual(preferences.regions, [{ id: 'occitanie', name: 'Occitanie' }]);
 });

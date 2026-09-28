@@ -1,5 +1,6 @@
 import { buildPublicApiUrl, getPublicApiBaseUrl } from '@/lib/api/env';
 import type { Locale } from '@/lib/i18n/routing';
+import { normalizeNewsletterPreferences, normalizeNewsletterRegions } from '@/lib/newsletter-normalization';
 
 export const NEWSLETTER_INTERESTS = [
   'airplane', 'ulm', 'parachuting', 'paragliding', 'paramotor', 'helicopter', 'hot_air_balloon', 'gliding'
@@ -110,13 +111,17 @@ export const subscribeToNewsletter = (payload: NewsletterSubscribePayload) =>
     method: 'POST', body: JSON.stringify(payload)
   });
 
-export const getNewsletterPreferences = async (token: string) =>
-  unwrapData(await request<NewsletterPreferences | { data: NewsletterPreferences }>(`/api/newsletter/preferences?${new URLSearchParams({ token })}`));
+export const getNewsletterPreferences = async (token: string): Promise<NewsletterPreferences> => {
+  const payload = await request<unknown>(`/api/newsletter/preferences?${new URLSearchParams({ token })}`);
+  return normalizeNewsletterPreferences(unwrapData(payload)) as NewsletterPreferences;
+};
 
-export const updateNewsletterPreferences = async (token: string, payload: NewsletterPreferencesPayload) =>
-  unwrapData(await request<NewsletterPreferences | { data: NewsletterPreferences }>(`/api/newsletter/preferences?${new URLSearchParams({ token })}`, {
+export const updateNewsletterPreferences = async (token: string, payload: NewsletterPreferencesPayload): Promise<NewsletterPreferences> => {
+  const response = await request<unknown>(`/api/newsletter/preferences?${new URLSearchParams({ token })}`, {
     method: 'PUT', body: JSON.stringify(payload)
-  }));
+  });
+  return normalizeNewsletterPreferences(unwrapData(response)) as NewsletterPreferences;
+};
 
 export const unsubscribeFromNewsletter = (token: string) =>
   request<{ message?: string }>('/api/newsletter/unsubscribe', {
@@ -124,6 +129,6 @@ export const unsubscribeFromNewsletter = (token: string) =>
   });
 
 export const getNewsletterRegions = async () => {
-  const payload = await request<NewsletterRegion[] | { data: NewsletterRegion[] }>('/api/newsletter/regions');
-  return unwrapData(payload);
+  const payload = await request<unknown>('/api/newsletter/regions');
+  return normalizeNewsletterRegions(unwrapData(payload)) as NewsletterRegion[];
 };
