@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Container } from '@/components/ui/Container';
+import { NewsletterCta } from '@/components/blog/NewsletterCta';
 import { siteConfig } from '@/lib/constants';
 import { getNavigation, getPathLocale } from '@/lib/i18n/routing';
 
@@ -14,7 +15,8 @@ export function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-slate-50 py-10">
       <Container>
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-10"><NewsletterCta source="footer" locale={locale} /></div>
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <h3 className="font-semibold text-slate-900">{siteConfig.name}</h3>
             <p className="mt-2 text-sm text-slate-600">
@@ -30,10 +32,6 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-900">Newsletter</h3>
-            <p className="mt-2 text-sm text-slate-600">{locale === 'fr' ? 'Recevez les nouveaux contenus du blog.' : 'Get the latest blog content.'}</p>
           </div>
           <nav aria-label="Liens légaux">
             <h3 className="font-semibold text-slate-900">Informations légales</h3>

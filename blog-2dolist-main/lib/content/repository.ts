@@ -2,6 +2,7 @@ import { buildPublicApiUrl, getPublicApiBaseUrl } from '@/lib/api/env';
 import { siteConfig, DEFAULT_LOCALE } from '@/lib/site/config';
 import { getArticlePath, type Hreflang, type Locale } from '@/lib/i18n/routing';
 import type { Author, Category, Post, PostFaq, PostSection, RelatedPostSummary } from '@/types/content';
+import { NEWSLETTER_INTERESTS, type NewsletterInterest } from '@/lib/newsletter';
 
 interface ApiMedia {
   url?: string | null;
@@ -50,6 +51,8 @@ interface ApiPost {
   canonicalUrl?: string | null;
   translations?: Array<{ locale?: Locale | null; slug?: string | null; path?: string | null; canonicalUrl?: string | null }> | null;
   hreflang?: Array<{ hreflang?: Hreflang | null; href?: string | null }> | null;
+  newsletterInterest?: string | null;
+  newsletterRegion?: string | null;
 }
 
 interface ApiCategory {
@@ -252,7 +255,11 @@ const toPost = (apiPost: ApiPost): Post => {
     ?.flatMap((item) => {
       if ((item.hreflang !== 'en' && item.hreflang !== 'fr' && item.hreflang !== 'x-default') || !item.href?.trim()) return [];
       return [{ hreflang: item.hreflang, href: item.href.trim() }];
-    })
+    }),
+  newsletterInterest: NEWSLETTER_INTERESTS.includes(apiPost.newsletterInterest as NewsletterInterest)
+    ? apiPost.newsletterInterest as NewsletterInterest
+    : undefined,
+  newsletterRegion: apiPost.newsletterRegion?.trim() || undefined
 });
 };
 

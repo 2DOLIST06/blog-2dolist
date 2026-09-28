@@ -1,4 +1,5 @@
 import type { Hreflang, Locale } from '@/lib/i18n/routing';
+import type { NewsletterInterest } from '@/lib/newsletter';
 
 export interface Author {
   id: string;
@@ -82,6 +83,9 @@ export interface Post {
   canonicalUrl?: string;
   translations?: PostTranslation[];
   hreflang?: PostHreflang[];
+  /** Contexte newsletter explicite fourni par le backend éditorial. */
+  newsletterInterest?: NewsletterInterest;
+  newsletterRegion?: string;
 }
 
 export interface RelatedPostSummary {
