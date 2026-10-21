@@ -1,6 +1,7 @@
 'use client';
 
-import { type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { cleanEditorClone, decorateHtmlBlocks, insertBlockAtRange, rangeAtPoint, serializeEditorBlocks, type RichContentBlock } from '@/lib/admin/editor-blocks';
 import { InternalLinkPicker } from '@/components/admin/InternalLinkPicker';
 import { collectLinkOccurrences, groupLinkOccurrences, linkGroupKey, type LinkGroup } from '@/lib/admin/internal-links';
 import type { InternalLinkCategoryOption, InternalLinkDestination } from '@/types/internal-links';
@@ -11,18 +12,6 @@ export interface RichContentValue {
   blocks?: RichContentBlock[];
   [key: string]: unknown;
 }
-
-type RichContentBlock = Record<string, unknown> & {
-  id?: string;
-  type?: string;
-  html?: string;
-  content?: string;
-  value?: string;
-  markup?: string;
-  rawHtml?: string;
-  body?: string;
-  label?: string;
-};
 
 type ActiveFormats = {
   block: string;
@@ -183,7 +172,7 @@ const getSelectedHtmlBlock = (root: HTMLElement | null) => {
 };
 
 const createHtmlBlock = (html: string) =>
-  `<div data-admin-html-block="html" data-admin-block-id="bloc-${Date.now()}" data-admin-block-label="Bloc HTML / widget">${html}</div><p><br></p>`;
+  `<div data-admin-html-block="html" data-admin-block-id="bloc-${crypto.randomUUID()}" data-admin-block-label="Bloc HTML / widget">${html}</div>`;
 
 const getBlockHtml = (block: RichContentBlock) => {
   for (const key of ['html', 'content', 'value', 'markup', 'rawHtml', 'body'] as const) {
@@ -214,24 +203,11 @@ const valueToEditableHtml = (value: RichContentValue) =>
   Array.isArray(value.blocks) && value.blocks.length > 0 ? value.blocks.map(blockToEditableHtml).join('') : value.html;
 
 const serializeEditorValue = (root: HTMLElement | null, previousValue: RichContentValue): RichContentValue => {
-  const html = root?.innerHTML ?? '';
-  if (!Array.isArray(previousValue.blocks) || previousValue.blocks.length === 0 || !root) return { ...previousValue, html };
-
-  const blocks = previousValue.blocks.map((block, index) => {
-    const element = root.querySelector<HTMLElement>(`[data-admin-content-block-index="${index}"]`);
-    if (!element) return block;
-    const nextHtml = element.innerHTML;
-    if (block.type === 'html') return { ...block, html: nextHtml };
-    if (typeof block.html === 'string') return { ...block, html: nextHtml };
-    if (typeof block.content === 'string') return { ...block, content: nextHtml };
-    if (typeof block.value === 'string') return { ...block, value: nextHtml };
-    if (typeof block.markup === 'string') return { ...block, markup: nextHtml };
-    if (typeof block.rawHtml === 'string') return { ...block, rawHtml: nextHtml };
-    if (typeof block.body === 'string') return { ...block, body: nextHtml };
-    return { ...block, html: nextHtml };
-  });
-
-  return { ...previousValue, html, blocks };
+  if (!root) return previousValue;
+  if (!Array.isArray(previousValue.blocks) || previousValue.blocks.length === 0) {
+    return { ...previousValue, html: cleanEditorClone(root).innerHTML };
+  }
+  return { ...previousValue, ...serializeEditorBlocks(root, previousValue.blocks) };
 };
 
 export function RichContentEditor({
@@ -246,6 +222,9 @@ export function RichContentEditor({
   internalLinkCategories?: InternalLinkCategoryOption[];
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const htmlInsertionRange = useRef<Range | null>(null);
+  const emittedHtml = useRef<string | null>(null);
+  const draggedHtmlBlock = useRef<HTMLElement | null>(null);
   const savedSelection = useRef<Range | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -276,13 +255,27 @@ export function RichContentEditor({
     // Imported HTML is inert while parsed in a template; remove executable content
     // before it ever reaches the contenteditable DOM. data-* widget attributes remain.
     const nextHtml = sanitizeCustomHtmlBlock(valueToEditableHtml(value));
-    if (ref.current && ref.current.innerHTML !== nextHtml) ref.current.innerHTML = nextHtml;
+    if (ref.current) {
+      // A local edit already has the right DOM and live selection. Rebuilding it
+      // from blocks here would invalidate the saved caret and split containers.
+      const currentHtml = cleanEditorClone(ref.current).innerHTML;
+      if (currentHtml !== nextHtml && !(emittedHtml.current === value.html && currentHtml === value.html)) {
+        ref.current.innerHTML = nextHtml;
+        savedSelection.current = null;
+        htmlInsertionRange.current = null;
+      }
+      decorateHtmlBlocks(ref.current);
+    }
     refreshLinkSummary();
   }, [value, refreshLinkSummary]);
 
   useEffect(() => () => { if (summaryFrame.current !== null) cancelAnimationFrame(summaryFrame.current); }, []);
 
-  const emit = useCallback(() => onChange(serializeEditorValue(ref.current, value)), [onChange, value]);
+  const emit = useCallback(() => {
+    const nextValue = serializeEditorValue(ref.current, value);
+    emittedHtml.current = nextValue.html;
+    onChange(nextValue);
+  }, [onChange, value]);
 
   const selectImage = useCallback((image: HTMLImageElement | null) => {
     const nextImage = image && ref.current?.contains(image) ? image : null;
@@ -350,9 +343,10 @@ export function RichContentEditor({
   }, [selectImage]);
 
   useEffect(() => {
-    document.addEventListener('selectionchange', refreshActiveFormats);
-    return () => document.removeEventListener('selectionchange', refreshActiveFormats);
-  }, [refreshActiveFormats]);
+    const updateSelection = () => { saveSelection(); refreshActiveFormats(); };
+    document.addEventListener('selectionchange', updateSelection);
+    return () => document.removeEventListener('selectionchange', updateSelection);
+  }, [refreshActiveFormats, saveSelection]);
 
   const exec = (cmd: string, valueArg?: string) => {
     restoreSelection();
@@ -513,6 +507,7 @@ export function RichContentEditor({
 
   const openAddHtmlBlock = () => {
     saveSelection();
+    htmlInsertionRange.current = savedSelection.current?.cloneRange() ?? null;
     setEditingHtmlBlockId(null);
     setHtmlBlockValue(' ');
     setHtmlBlockError('');
@@ -528,7 +523,7 @@ export function RichContentEditor({
       return;
     }
     setEditingHtmlBlockId(block.dataset.adminBlockId || 'selected');
-    setHtmlBlockValue(block.innerHTML.trim());
+    setHtmlBlockValue(cleanEditorClone(block).innerHTML.trim());
     setHtmlBlockError('');
   };
 
@@ -540,42 +535,37 @@ export function RichContentEditor({
     }
 
     if (editingHtmlBlockId) {
-      const block = getSelectedHtmlBlock(ref.current) || ref.current?.querySelector<HTMLElement>(`[data-admin-block-id="${CSS.escape(editingHtmlBlockId)}"]`);
+      const block = ref.current?.querySelector<HTMLElement>(`[data-admin-block-id="${CSS.escape(editingHtmlBlockId)}"]`);
       if (!block) {
         setHtmlBlockError('Bloc HTML introuvable dans le contenu.');
         return;
       }
       block.innerHTML = sanitizedHtml;
-      emit();
+      ref.current?.focus({ preventScroll: true });
+      const range = document.createRange();
+      range.selectNodeContents(block);
+      range.collapse(true);
+      const selection = document.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
       saveSelection();
+      emit();
     } else {
-      restoreSelection();
-      document.execCommand('insertHTML', false, createHtmlBlock(sanitizedHtml));
-      const newBlock = ref.current?.querySelector<HTMLElement>('[data-admin-block-id^="bloc-"]:not([data-admin-content-block-index])');
-      if (newBlock && Array.isArray(value.blocks)) {
-        const nextIndex = value.blocks.length;
-        newBlock.dataset.adminContentBlockIndex = String(nextIndex);
-        onChange({
-          ...serializeEditorValue(ref.current, value),
-          blocks: [
-            ...value.blocks,
-            {
-              id: newBlock.dataset.adminBlockId,
-              type: 'html',
-              html: sanitizedHtml,
-              label: newBlock.dataset.adminBlockLabel || 'Bloc HTML / widget'
-            }
-          ]
-        });
-        saveSelection();
-        setHtmlBlockValue('');
-        setEditingHtmlBlockId(null);
-        setHtmlBlockError('');
-        refreshActiveFormats();
+      const root = ref.current;
+      if (!root) return;
+      const range = htmlInsertionRange.current;
+      if (!range || !root.contains(range.commonAncestorContainer)) {
+        setHtmlBlockError('Placez le curseur dans le contenu, puis cliquez sur « Ajouter un bloc HTML ».');
         return;
       }
-      emit();
+      const template = document.createElement('template');
+      template.innerHTML = createHtmlBlock(sanitizedHtml);
+      const block = template.content.firstElementChild as HTMLElement;
+      root.focus({ preventScroll: true });
+      insertBlockAtRange(root, range, block);
+      htmlInsertionRange.current = null;
       saveSelection();
+      emit();
     }
 
     setHtmlBlockValue('');
@@ -585,6 +575,7 @@ export function RichContentEditor({
   };
 
   const cancelHtmlBlock = () => {
+    htmlInsertionRange.current = null;
     setHtmlBlockValue('');
     setEditingHtmlBlockId(null);
     setHtmlBlockError('');
@@ -613,6 +604,30 @@ export function RichContentEditor({
     else block.parentElement.insertBefore(sibling, block);
     setHtmlBlockError('');
     emit();
+  };
+
+  const startBlockDrag = (event: ReactDragEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const handle = target.closest('[data-admin-drag-handle]');
+    const block = handle?.closest<HTMLElement>('[data-admin-html-block="html"]');
+    if (!block || !ref.current?.contains(block)) return;
+    draggedHtmlBlock.current = block;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', 'Bloc HTML');
+  };
+
+  const dropHtmlBlock = (event: ReactDragEvent<HTMLDivElement>) => {
+    const block = draggedHtmlBlock.current;
+    const root = ref.current;
+    if (!block || !root) return;
+    event.preventDefault();
+    draggedHtmlBlock.current = null;
+    const range = rangeAtPoint(root, event.clientX, event.clientY);
+    if (!range || (event.target instanceof Node && block.contains(event.target))) return;
+    if (!insertBlockAtRange(root, range, block)) return;
+    saveSelection();
+    emit();
+    refreshLinkSummary();
   };
 
   const addImageByUrl = () => {
@@ -808,6 +823,14 @@ export function RichContentEditor({
         contentEditable
         suppressContentEditableWarning
         className="min-h-[520px] w-full bg-white p-8 text-base leading-8 text-slate-900 outline-none [&_a]:font-medium [&_a]:text-brand-700 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_figcaption]:mt-2 [&_figcaption]:text-center [&_figcaption]:text-sm [&_figcaption]:text-slate-500 [&_figure]:my-6 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:text-xl [&_h3]:font-semibold [&_h4]:text-lg [&_h4]:font-semibold [&_[data-admin-html-block='html']]:my-6 [&_[data-admin-html-block='html']]:rounded-xl [&_[data-admin-html-block='html']]:border [&_[data-admin-html-block='html']]:border-dashed [&_[data-admin-html-block='html']]:border-amber-400 [&_[data-admin-html-block='html']]:bg-amber-50 [&_[data-admin-html-block='html']]:p-4 [&_img]:h-auto [&_img]:max-w-full [&_img]:cursor-se-resize [&_img]:rounded-xl [&_img]:outline-offset-4 [&_img]:focus:outline [&_img]:focus:outline-2 [&_img]:focus:outline-brand-500 [&_ol]:list-decimal [&_ol]:pl-6 [&_pre]:rounded-lg [&_pre]:bg-slate-100 [&_pre]:p-4 [&_ul]:list-disc [&_ul]:pl-6"
+        onDragStart={startBlockDrag}
+        onDragEnd={() => { draggedHtmlBlock.current = null; }}
+        onDragOver={(event) => {
+          if (!draggedHtmlBlock.current) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'move';
+        }}
+        onDrop={dropHtmlBlock}
         onBlur={saveSelection}
         onMouseDown={startImageCornerResize}
         onInput={() => {
@@ -822,6 +845,17 @@ export function RichContentEditor({
         }}
         onMouseUp={(event) => {
           const target = event.target;
+          if (target instanceof HTMLElement && target.closest('[data-admin-drag-handle]')) {
+            const block = target.closest('[data-admin-html-block="html"]');
+            if (block) {
+              const range = document.createRange();
+              range.setStart(block, 1);
+              range.collapse(true);
+              const selection = document.getSelection();
+              selection?.removeAllRanges();
+              selection?.addRange(range);
+            }
+          }
           selectImage(target instanceof HTMLImageElement ? target : null);
           saveSelection();
           refreshActiveFormats();
