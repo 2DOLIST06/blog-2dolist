@@ -417,14 +417,35 @@ export function RichContentEditor({
 
   const addLink = () => {
     saveSelection();
+    const currentLink = getSelectionElement()?.closest('a');
+    if (currentLink && ref.current?.contains(currentLink)) {
+      editSelectedLink();
+      return;
+    }
     const selectedText = document.getSelection()?.toString().trim();
     const url = window.prompt('URL du lien (https://...)');
     if (!url) return;
     restoreSelection();
     if (selectedText) document.execCommand('createLink', false, url);
-    else document.execCommand('insertHTML', false, `<a href="${url}">${url}</a>`);
+    else document.execCommand('insertHTML', false, `<a href="${escapeHtmlAttribute(url)}">${escapeHtmlAttribute(url)}</a>`);
     emit();
     refreshActiveFormats();
+    refreshLinkSummary();
+  };
+
+  const editSelectedLink = () => {
+    restoreSelection();
+    const link = getSelectionElement()?.closest('a');
+    if (!link || !ref.current?.contains(link)) return;
+    saveSelection();
+    const nextUrl = window.prompt('Modifier le lien — URL du lien', link.getAttribute('href') ?? '');
+    if (nextUrl === null || !nextUrl.trim()) return;
+    restoreSelection();
+    link.setAttribute('href', nextUrl.trim());
+    emit();
+    saveSelection();
+    refreshActiveFormats();
+    refreshLinkSummary();
   };
 
   const insertImage = (url: string, alt = '') => {
@@ -763,6 +784,7 @@ export function RichContentEditor({
 
         <button type="button" className={buttonClass()} onClick={() => exec('insertHorizontalRule')}>Ligne</button>
         <button type="button" className={buttonClass(activeFormats.link)} onClick={addLink}>Lien</button>
+        <button type="button" className={buttonClass(activeFormats.link)} disabled={!activeFormats.link} onClick={editSelectedLink}>Modifier le lien</button>
         <button type="button" className={buttonClass()} disabled={!hasTextSelection} onClick={openInternalLinkPicker}>Lien interne</button>
         <button type="button" className={buttonClass()} onClick={() => exec('unlink')}>Retirer lien</button>
         <button type="button" className={buttonClass()} onClick={addImageByUrl}>Image URL</button>
