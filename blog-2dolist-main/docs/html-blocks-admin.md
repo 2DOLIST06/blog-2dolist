@@ -4,9 +4,13 @@
 
 Dans l’éditeur d’un article, placez le curseur à l’endroit voulu dans le contenu puis cliquez sur **Ajouter un bloc HTML**. Collez le markup HTML du widget dans la zone dédiée, puis validez avec **Insérer le bloc à la position du curseur**.
 
+L’insertion coupe le paragraphe au niveau du curseur si nécessaire, en conservant sa mise en forme et tout le texte qui suit. Sans position de curseur valide, l’éditeur demande de la sélectionner.
+
 Le bloc est enregistré dans le contenu HTML de l’article (`contentJson.html` et `contentHtml`) sous forme d’un conteneur identifié par `data-admin-html-block="html"`. Cela évite de modifier le modèle backend et conserve la compatibilité avec les articles WordPress importés qui utilisent déjà `contentHtml`.
 
 ## Modifier, supprimer ou déplacer un bloc
+
+Chaque bloc possède une poignée **⠿ Déplacer le bloc HTML**. Faites-la glisser à l’endroit souhaité dans le texte ; le contenu qui suit reste après le bloc. La position est conservée après enregistrement et réouverture. La poignée appartient uniquement à l’éditeur et n’est pas enregistrée dans le HTML public.
 
 Pour modifier un bloc existant, cliquez dans le bloc dans l’éditeur, puis utilisez **Modifier bloc HTML**. Les boutons **Supprimer bloc HTML**, **Monter bloc** et **Descendre bloc** agissent aussi sur le bloc actuellement sélectionné.
 
