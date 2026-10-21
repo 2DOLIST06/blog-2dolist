@@ -27,6 +27,23 @@ test('recalcule des IDs uniques depuis les textes H2/H3 et aligne le sommaire', 
   assert.deepEqual(extractHeadingsFromHtml(output).map(({ id }) => id), ['equipement-requis', 'a-savoir', 'equipement-requis-2']);
 });
 
+test('préserve le conteneur GetYourGuide vide et ses attributs au rendu article', () => {
+  const widget = '<div data-gyg-href="https://widget.getyourguide.com/default/city.frame" data-gyg-location-id="120865" data-gyg-locale-code="fr-FR" data-gyg-widget="city" data-gyg-partner-id="32QOCNG"></div>';
+  const content = `<p>Avant le widget</p><div data-admin-html-block="html">${widget}</div><p>Après le widget</p><div><br></div>`;
+  const expected = `<p>Avant le widget</p><div data-admin-html-block="html">${widget}</div><p>Après le widget</p>`;
+
+  assert.equal(sanitizeArticleHtml(widget), widget);
+  assert.equal(sanitizeArticleHtml(content), expected);
+  // ArticlePageView and ArticleRichContentRenderer both run this cleanup.
+  assert.equal(sanitizeArticleHtml(sanitizeArticleHtml(content)), expected);
+});
+
+test('préserve les espaces réservés aux widgets et continue de retirer les éléments vides ordinaires', () => {
+  const widget = '<div data-gyg-widget="city"> <br> </div>';
+  const htmlBlock = '<div data-admin-html-block="html"></div>';
+  assert.equal(sanitizeArticleHtml(`<div>${widget}</div><p></p><div> </div><div><br></div><h2></h2>${htmlBlock}`), `<div>${widget}</div>${htmlBlock}`);
+});
+
 test('le renderer article garantit un H1 éditorial et les trois JSON-LD attendus', () => {
   assert.match(articleSource, /post\.h1 \|\| post\.title/);
   assert.equal((articleSource.match(/<h1\b/g) ?? []).length, 1);
