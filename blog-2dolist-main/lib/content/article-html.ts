@@ -2,6 +2,11 @@ import { addHeadingIds } from './headings.ts';
 
 const emptyContainerRegex = /<(p|div)\b[^>]*>(?:\s|&nbsp;|&#160;|<br\s*\/?\s*>)*<\/\1>/gi;
 
+// Widgets are empty until their provider's script mounts them in the browser.
+// Keep their placeholders and explicitly marked custom HTML blocks intact.
+const removeEmptyElement = (elementHtml: string) =>
+  /\sdata-(?:gyg-[\w-]+|admin-html-block)\s*=/i.test(elementHtml) ? elementHtml : '';
+
 export function stripWordPressBlockComments(contentHtml?: string | null) {
   return (contentHtml ?? '').replace(/<!--\s*\/?\s*wp:[\s\S]*?-->/gi, '');
 }
@@ -28,8 +33,8 @@ export function sanitizeArticleHtml(contentHtml?: string | null) {
   do {
     previous = html;
     html = html
-      .replace(emptyContainerRegex, '')
-      .replace(/<(p|div|h[1-6]|ul|ol|li|figure|figcaption|blockquote|strong|em|a)\b[^>]*>\s*<\/\1>/gi, '');
+      .replace(emptyContainerRegex, removeEmptyElement)
+      .replace(/<(p|div|h[1-6]|ul|ol|li|figure|figcaption|blockquote|strong|em|a)\b[^>]*>\s*<\/\1>/gi, removeEmptyElement);
   } while (html !== previous);
 
   return addHeadingIds(html).trim();
