@@ -242,6 +242,9 @@ export function RichContentEditor({
   const [linkGroups, setLinkGroups] = useState<LinkGroup[]>([]);
   const [groupPositions, setGroupPositions] = useState<Record<string, number>>({});
   const summaryFrame = useRef<number | null>(null);
+  const linkTarget = useRef<{ anchor: HTMLAnchorElement | null; image: HTMLImageElement | null } | null>(null);
+  const [linkOptions, setLinkOptions] = useState<{ url: string; rel: string[]; newTab: boolean } | null>(null);
+  const [linkError, setLinkError] = useState('');
 
   const refreshLinkSummary = useCallback(() => {
     if (summaryFrame.current !== null) cancelAnimationFrame(summaryFrame.current);
@@ -415,37 +418,74 @@ export function RichContentEditor({
     setGroupPositions((state) => ({ ...state, [group.key]: position }));
   };
 
-  const addLink = () => {
+  const openLinkOptions = (image: HTMLImageElement | null = null) => {
     saveSelection();
-    const currentLink = getSelectionElement()?.closest('a');
-    if (currentLink && ref.current?.contains(currentLink)) {
-      editSelectedLink();
-      return;
-    }
-    const selectedText = document.getSelection()?.toString().trim();
-    const url = window.prompt('URL du lien (https://...)');
-    if (!url) return;
-    restoreSelection();
-    if (selectedText) document.execCommand('createLink', false, url);
-    else document.execCommand('insertHTML', false, `<a href="${escapeHtmlAttribute(url)}">${escapeHtmlAttribute(url)}</a>`);
-    emit();
-    refreshActiveFormats();
-    refreshLinkSummary();
+    const candidate = image?.closest('a') ?? getSelectionElement()?.closest('a');
+    const anchor = candidate && ref.current?.contains(candidate) ? candidate as HTMLAnchorElement : null;
+    linkTarget.current = { anchor, image };
+    setLinkError('');
+    setLinkOptions({
+      url: anchor?.getAttribute('href') ?? '',
+      rel: (anchor?.getAttribute('rel') ?? '').split(/\s+/).filter(Boolean),
+      newTab: anchor ? anchor.target === '_blank' : Boolean(image)
+    });
   };
 
-  const editSelectedLink = () => {
+  const addLink = () => openLinkOptions(getCurrentSelectedImage());
+  const editSelectedLink = () => openLinkOptions(getCurrentSelectedImage());
+
+  const applyLinkOptions = (remove = false) => {
+    const root = ref.current;
+    const target = linkTarget.current;
+    if (!root || !target || !linkOptions) return;
+    if ((target.anchor && !root.contains(target.anchor)) || (target.image && !root.contains(target.image))) {
+      setLinkError('La sélection a changé. Fermez ce panneau et sélectionnez à nouveau le lien.');
+      return;
+    }
+    const url = linkOptions.url.trim();
+    if (!remove && (!url || !/^(https?:|mailto:|tel:|\/|#|\?|\.\.?\/)/i.test(url) || url.startsWith('//'))) {
+      setLinkError('Saisissez une URL https://, http://, mailto:, tel: ou un chemin relatif (/…).');
+      return;
+    }
+    if (!target.anchor && !target.image && (!savedSelection.current || !root.contains(savedSelection.current.commonAncestorContainer))) {
+      setLinkError('Sélectionnez à nouveau le texte à lier.');
+      return;
+    }
     restoreSelection();
-    const link = getSelectionElement()?.closest('a');
-    if (!link || !ref.current?.contains(link)) return;
-    saveSelection();
-    const nextUrl = window.prompt('Modifier le lien — URL du lien', link.getAttribute('href') ?? '');
-    if (nextUrl === null || !nextUrl.trim()) return;
-    restoreSelection();
-    link.setAttribute('href', nextUrl.trim());
-    emit();
-    saveSelection();
-    refreshActiveFormats();
-    refreshLinkSummary();
+    if (remove) {
+      if (target.anchor) target.anchor.replaceWith(...Array.from(target.anchor.childNodes));
+    } else {
+      let anchors: HTMLAnchorElement[] = [];
+      if (target.anchor) anchors = [target.anchor];
+      else if (target.image) {
+        const anchor = document.createElement('a');
+        target.image.replaceWith(anchor);
+        anchor.appendChild(target.image);
+        anchors = [anchor];
+      } else {
+        // A unique temporary href identifies every anchor created across formatted text.
+        const marker = `https://editor.invalid/${crypto.randomUUID()}`;
+        if (document.getSelection()?.toString()) document.execCommand('createLink', false, marker);
+        else document.execCommand('insertHTML', false, `<a href="${marker}">${escapeHtmlAttribute(url)}</a>`);
+        anchors = Array.from(root.querySelectorAll<HTMLAnchorElement>('a')).filter((anchor) => anchor.getAttribute('href') === marker);
+      }
+      if (!anchors.length) {
+        setLinkError('Impossible de créer le lien. Sélectionnez à nouveau le texte.');
+        return;
+      }
+      const rel = new Set(linkOptions.rel);
+      if (linkOptions.newTab) rel.add('noopener');
+      for (const anchor of anchors) {
+        anchor.setAttribute('href', url);
+        if (linkOptions.newTab) anchor.setAttribute('target', '_blank');
+        else anchor.removeAttribute('target');
+        if (rel.size) anchor.setAttribute('rel', Array.from(rel).join(' '));
+        else anchor.removeAttribute('rel');
+      }
+    }
+    setLinkOptions(null);
+    linkTarget.current = null;
+    saveSelection(); emit(); refreshActiveFormats(); refreshLinkSummary();
   };
 
   const insertImage = (url: string, alt = '') => {
@@ -466,38 +506,8 @@ export function RichContentEditor({
       return;
     }
 
-    const currentLink = image.closest('a');
-    const currentUrl = currentLink?.getAttribute('href') ?? '';
-    const nextUrl = window.prompt('URL du lien de l’image (laissez vide pour retirer le lien)', currentUrl);
-    if (nextUrl === null) return;
-
-    const trimmedUrl = nextUrl.trim();
-    if (!trimmedUrl) {
-      if (currentLink) currentLink.replaceWith(image);
-      setUploadError('');
-      emit();
-      saveSelection();
-      refreshActiveFormats();
-      return;
-    }
-
-    if (currentLink) {
-      currentLink.setAttribute('href', trimmedUrl);
-      currentLink.setAttribute('target', '_blank');
-      currentLink.setAttribute('rel', 'noopener noreferrer');
-    } else {
-      const link = document.createElement('a');
-      link.setAttribute('href', trimmedUrl);
-      link.setAttribute('target', '_blank');
-      link.setAttribute('rel', 'noopener noreferrer');
-      image.replaceWith(link);
-      link.appendChild(image);
-    }
-
     setUploadError('');
-    emit();
-    saveSelection();
-    refreshActiveFormats();
+    openLinkOptions(image);
   };
 
   const handleToolbarMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -815,6 +825,30 @@ export function RichContentEditor({
         <button type="button" className={buttonClass()} onClick={() => exec('undo')}>Undo</button>
         <button type="button" className={buttonClass()} onClick={() => exec('redo')}>Redo</button>
       </div>
+
+      {linkOptions ? (
+        <div role="region" aria-label="Options du lien" className="border-b border-slate-700 bg-slate-900 p-4 text-sm text-slate-100">
+          <label className="block font-semibold">URL du lien
+            <input autoFocus type="text" value={linkOptions.url} onChange={(event) => setLinkOptions({ ...linkOptions, url: event.target.value })} className="mt-2 w-full rounded border border-slate-600 bg-white p-2 text-slate-950" placeholder="https://… ou /articles/…" />
+          </label>
+          <p className="mt-3 text-xs text-slate-400">Sans sponsored, nofollow ou ugc, le lien est classique (dofollow). Ces options peuvent se combiner.</p>
+          <div className="mt-3 flex flex-wrap gap-4">
+            {(['sponsored', 'nofollow', 'ugc', 'noreferrer'] as const).map((token) => (
+              <label key={token} className="flex items-center gap-2">
+                <input type="checkbox" checked={linkOptions.rel.includes(token)} onChange={(event) => setLinkOptions({ ...linkOptions, rel: event.target.checked ? [...linkOptions.rel, token] : linkOptions.rel.filter((value) => value !== token) })} />
+                {{ sponsored: 'Sponsored (publicité / affiliation)', nofollow: 'Nofollow', ugc: 'UGC (contenu utilisateur)', noreferrer: 'Noreferrer (masquer la provenance)' }[token]}
+              </label>
+            ))}
+            <label className="flex items-center gap-2"><input type="checkbox" checked={linkOptions.newTab} onChange={(event) => setLinkOptions({ ...linkOptions, newTab: event.target.checked })} />Ouvrir dans un nouvel onglet</label>
+          </div>
+          {linkError ? <p role="alert" className="mt-2 text-red-300">{linkError}</p> : null}
+          <div className="mt-3 flex gap-2">
+            <button type="button" className={buttonClass()} onClick={() => applyLinkOptions()}>Appliquer le lien</button>
+            {linkTarget.current?.anchor ? <button type="button" className={buttonClass()} onClick={() => applyLinkOptions(true)}>Retirer le lien</button> : null}
+            <button type="button" className={buttonClass()} onClick={() => { setLinkOptions(null); linkTarget.current = null; restoreSelection(); }}>Annuler</button>
+          </div>
+        </div>
+      ) : null}
 
       {internalPickerOpen ? <InternalLinkPicker categories={internalLinkCategories} onClose={() => setInternalPickerOpen(false)} onSelect={applyInternalLink} /> : null}
       {internalLinkError ? <p className="border-b border-red-900 bg-red-950/70 px-3 py-2 text-xs text-red-100">{internalLinkError}</p> : null}

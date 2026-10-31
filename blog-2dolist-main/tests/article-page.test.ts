@@ -66,3 +66,10 @@ test('les métadonnées article omettent keywords, normalisent le canonical et b
   assert.match(metadataSource, /withTrailingSlash\(post\.canonicalUrl/);
   assert.match(metadataSource, /modifiedTime: getValidModifiedDate/);
 });
+
+test('préserve les attributs SEO des liens texte et image au rendu public', () => {
+  const input = '<p><a href="https://partenaire.example" rel="sponsored nofollow" target="_blank">Partenaire</a></p><figure><a href="https://partenaire.example" rel="sponsored nofollow noopener" target="_blank"><img src="photo.jpg" alt="Vue aérienne"></a></figure>';
+  assert.equal(sanitizeArticleHtml(input), input);
+  const classic = '<p><a href="/articles/exemple">Article</a></p>';
+  assert.equal(sanitizeArticleHtml(classic), classic);
+});
